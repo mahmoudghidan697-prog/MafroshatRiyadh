@@ -47,6 +47,26 @@ export async function POST(req: NextRequest) {
       .slice(0, 50);
     const safeName = `${baseName || 'upload'}-${Date.now()}.${ext}`;
 
+    // ─── Vercel Blob (production, if configured) ───
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (blobToken) {
+      try {
+        const { put } = await import('@vercel/blob');
+        const blob = await put(`products/${safeName}`, buffer, {
+          access: 'public',
+          token: blobToken,
+          contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+        });
+        return NextResponse.json({ ok: true, path: blob.url, size: buffer.length });
+      } catch (blobErr: any) {
+        return NextResponse.json(
+          { error: `Blob upload failed: ${blobErr?.message || 'unknown'}` },
+          { status: 500 },
+        );
+      }
+    }
+
+    // ─── Local filesystem (dev / self-hosted) ───
     if (!fs.existsSync(UPLOAD_DIR)) await mkdir(UPLOAD_DIR, { recursive: true });
     await writeFile(path.join(UPLOAD_DIR, safeName), buffer);
 
