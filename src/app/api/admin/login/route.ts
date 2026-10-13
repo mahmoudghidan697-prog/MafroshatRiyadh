@@ -20,7 +20,9 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, username: payload.username });
     res.cookies.set(COOKIE_NAME, token, {
       httpOnly: true,
-      secure: false,
+      // Secure cookies require HTTPS — always true in production (Vercel),
+      // false only for local http development.
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7,
       path: '/',
