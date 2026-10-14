@@ -106,9 +106,12 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
           <div>
             <div className="aspect-[4/3] rounded-2xl overflow-hidden relative bg-sand-100 dark:bg-charcoal-elevated">
               <img
+                key={product.images[activeImage]}
                 src={product.images[activeImage]}
                 alt={`${loc(locale, product.name)} — ${t.galleryImage} ${activeImage + 1}`}
                 className="w-full h-full object-cover"
+                loading="eager"
+                decoding="async"
               />
               {product.featured && (
                 <span className="absolute top-4 inset-inline-start-4 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-forest text-ivory text-xs font-semibold">

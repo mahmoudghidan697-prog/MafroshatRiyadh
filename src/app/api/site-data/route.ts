@@ -10,13 +10,16 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const products = await getProducts();
-    const categories = await getCategories();
-    const settings = await getSettings();
-    const testimonials = await getApprovedTestimonials();
-    // Editable content sections (services + FAQs), with static fallback
-    const services = await getContentSection('services');
-    const faqs = await getContentSection('faqs');
+    // Run all queries in parallel — sequential awaits were adding
+    // ~1.8s of round-trip latency to every public page load.
+    const [products, categories, settings, testimonials, services, faqs] = await Promise.all([
+      getProducts(),
+      getCategories(),
+      getSettings(),
+      getApprovedTestimonials(),
+      getContentSection('services'),
+      getContentSection('faqs'),
+    ]);
     return NextResponse.json(
       { products, categories, settings, testimonials, services, faqs },
       { headers: { 'Cache-Control': 'no-store' } },

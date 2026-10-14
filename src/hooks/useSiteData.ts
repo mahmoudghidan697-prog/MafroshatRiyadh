@@ -33,6 +33,11 @@ interface SiteData {
  * (add/edit/delete products) appear on the public site automatically.
  */
 export function useSiteData(): SiteData {
+  // Start EMPTY (loading) — never seed with static data. The static
+  // seed contains old image paths (e.g. /images/products/gym-1.jpg),
+  // so using it as the initial state makes stale images flash for
+  // seconds before the live DB data (with new Blob URLs) replaces them.
+  // Static data is kept only as a last-resort fallback on fetch failure.
   const [data, setData] = useState<{
     products: Product[];
     categories: Category[];
@@ -42,7 +47,7 @@ export function useSiteData(): SiteData {
     settings: Record<string, string>;
     live: boolean;
   }>({
-    products: staticProducts,
+    products: [],
     categories: staticCategories,
     testimonials: [],
     services: staticServices as any,
@@ -74,7 +79,16 @@ export function useSiteData(): SiteData {
           });
         }
       } catch {
-        // Network/DB error — keep the static fallback already in state
+        // Network/DB error — fall back to static seed data
+        setData({
+          products: staticProducts,
+          categories: staticCategories,
+          testimonials: [],
+          services: staticServices as any,
+          faqs: staticFaqs as any,
+          settings: {},
+          live: false,
+        });
       } finally {
         if (!cancelled) setLoading(false);
       }
