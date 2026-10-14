@@ -95,6 +95,23 @@ async function ensureSchema() {
   schemaReady = true;
   // Seed the default contact icons if the table is empty
   await seedContacts();
+  // Safe migration: add contact_key to contact_events if missing (older DBs)
+  await migrateContactEventsKey();
+}
+
+// Add contact_key column to contact_events if it doesn't exist yet
+// (tables created before the contact-icon system lack it).
+async function migrateContactEventsKey() {
+  try {
+    const db = getDb();
+    const info = await db.execute({ sql: 'PRAGMA table_info(contact_events)', args: [] });
+    const has = info.rows.some((r: any) => r.name === 'contact_key');
+    if (!has) {
+      await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN contact_key TEXT', args: [] });
+    }
+  } catch {
+    // Column already exists or table absent — ignore
+  }
 }
 
 // ─── Default contact icon definitions (seeded on first run) ───
