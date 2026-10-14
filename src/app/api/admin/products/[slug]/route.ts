@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, updateProduct, deleteProduct } from '@/lib/db';
 
+/** Normalize price to a plain integer (SAR) or null. */
+function normalizePrice(p: any): number | null {
+  if (p == null) return null;
+  if (typeof p === 'number') return Number.isFinite(p) ? Math.round(p) : null;
+  if (typeof p === 'object' && p.amount != null) {
+    const n = Number(p.amount);
+    return Number.isFinite(n) ? Math.round(n) : null;
+  }
+  const n = Number(p);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
 export async function PUT(req: NextRequest) {
   try {
     const body = await req.json();
@@ -23,7 +35,7 @@ export async function PUT(req: NextRequest) {
       material: { ar: body.material?.ar ?? '', en: body.material?.en ?? '' },
       color: { ar: body.color?.ar ?? '', en: body.color?.en ?? '' },
       dimensions: body.dimensions?.ar ? { ar: body.dimensions.ar, en: body.dimensions.en ?? '' } : undefined,
-      price: body.price ?? null,
+      price: normalizePrice(body.price),
       unit: body.unit?.ar ? { ar: body.unit.ar, en: body.unit.en ?? '' } : undefined,
       images: body.images ?? [],
       featured: body.featured ? 1 : 0,

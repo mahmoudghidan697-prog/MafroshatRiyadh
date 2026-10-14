@@ -349,6 +349,11 @@ export async function updateProduct(slug: string, updates: Partial<Product>) {
         args.push(JSON.stringify(value));
       } else if (key === 'featured' || key === 'published') {
         args.push(value ? 1 : 0);
+      } else if (key === 'price') {
+        // Never let a {amount} object or garbage string reach the price column
+        const raw = value as any;
+        const n = typeof raw === 'object' && raw?.amount != null ? Number(raw.amount) : Number(raw);
+        args.push(value == null || !Number.isFinite(n) ? null : Math.round(n));
       } else {
         args.push(value);
       }
