@@ -72,10 +72,13 @@ export async function POST(req: NextRequest) {
     if (blobToken) {
       try {
         const { put } = await import('@vercel/blob');
+        // addRandomSuffix ensures a re-upload with the same filename
+        // creates a NEW blob instead of failing with "already exists".
         const blob = await put(`products/${safeName}`, buffer, {
           access: 'public',
           token: blobToken,
           contentType: 'image/jpeg',
+          addRandomSuffix: true,
         });
         return NextResponse.json({ ok: true, path: blob.url, size: buffer.length });
       } catch (blobErr: any) {

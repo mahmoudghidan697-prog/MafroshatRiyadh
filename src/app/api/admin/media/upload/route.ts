@@ -56,6 +56,7 @@ export async function POST(req: NextRequest) {
           access: 'public',
           token: blobToken,
           contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+          addRandomSuffix: true,
         });
         return NextResponse.json({ ok: true, path: blob.url, size: buffer.length });
       } catch (blobErr: any) {
