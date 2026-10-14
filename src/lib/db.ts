@@ -119,15 +119,6 @@ export async function getProducts(): Promise<Product[]> {
   return result.rows.map(rowToProduct);
 }
 
-// Admin variant — returns ALL products (published AND unpublished) so the
-// admin can see and manage everything.
-export async function getAllProducts(): Promise<Product[]> {
-  await ensureSchema();
-  const db = getDb();
-  const result = await db.execute('SELECT * FROM products ORDER BY created_at DESC');
-  return result.rows.map(rowToProduct);
-}
-
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
   await ensureSchema();
   const db = getDb();
