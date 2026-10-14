@@ -26,6 +26,30 @@ interface SiteData {
   live: boolean;
 }
 
+const CACHE_KEY = 'ms_site_data_v1';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function readCache(): { products: Product[]; categories: Category[]; ts: number } | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Date.now() - parsed.ts > CACHE_TTL) return null;
+    if (!parsed.products?.length) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(products: Product[], categories: Category[]) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ products, categories, ts: Date.now() }));
+  } catch {
+    // storage full or unavailable — ignore
+  }
+}
+
 /**
  * useSiteData — fetches the live catalog from the database-backed
  * API and falls back to the static seed data (src/data/site.ts) if
@@ -33,11 +57,7 @@ interface SiteData {
  * (add/edit/delete products) appear on the public site automatically.
  */
 export function useSiteData(): SiteData {
-  // Start EMPTY (loading) — never seed with static data. The static
-  // seed contains old image paths (e.g. /images/products/gym-1.jpg),
-  // so using it as the initial state makes stale images flash for
-  // seconds before the live DB data (with new Blob URLs) replaces them.
-  // Static data is kept only as a last-resort fallback on fetch failure.
+  const cached = typeof window !== 'undefined' ? readCache() : null;
   const [data, setData] = useState<{
     products: Product[];
     categories: Category[];
@@ -47,15 +67,16 @@ export function useSiteData(): SiteData {
     settings: Record<string, string>;
     live: boolean;
   }>({
-    products: [],
-    categories: staticCategories,
+    // Show cached data instantly if available (no skeleton flash)
+    products: cached?.products ?? [],
+    categories: cached?.categories ?? staticCategories,
     testimonials: [],
     services: staticServices as any,
     faqs: staticFaqs as any,
     settings: {},
-    live: false,
+    live: !!cached,
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
 
   useEffect(() => {
     let cancelled = false;
@@ -77,18 +98,22 @@ export function useSiteData(): SiteData {
             settings: json.settings ?? {},
             live: true,
           });
+          // Cache for instant load on next navigation
+          writeCache(json.products, json.categories?.length ? json.categories : staticCategories);
         }
       } catch {
-        // Network/DB error — fall back to static seed data
-        setData({
-          products: staticProducts,
-          categories: staticCategories,
-          testimonials: [],
-          services: staticServices as any,
-          faqs: staticFaqs as any,
-          settings: {},
-          live: false,
-        });
+        // Network/DB error — fall back to cache, then static seed
+        if (!cached) {
+          setData({
+            products: staticProducts,
+            categories: staticCategories,
+            testimonials: [],
+            services: staticServices as any,
+            faqs: staticFaqs as any,
+            settings: {},
+            live: false,
+          });
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -98,7 +123,7 @@ export function useSiteData(): SiteData {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { ...data, loading };
 }
