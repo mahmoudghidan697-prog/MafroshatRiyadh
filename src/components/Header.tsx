@@ -25,8 +25,10 @@ export function Header() {
   const { locale, setLocale, dir, theme, toggleTheme, t } = useApp();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const pathname = usePathname();
   const isHome = pathname === '/';
@@ -62,6 +64,35 @@ export function Header() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSearchFocused(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Live search suggestions (categories)
+  const [searchResults, setSearchResults] = useState<
+    Array<{ slug: string; name: { ar: string; en: string }; sku: string }>
+  >([]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const q = searchQuery.trim().toLowerCase();
+    const results = categories
+      .filter((c) => c.name.ar.includes(searchQuery) || c.name.en.toLowerCase().includes(q))
+      .map((c) => ({ slug: c.id, name: c.name, sku: '' }))
+      .slice(0, 5);
+    setSearchResults(results);
+  }, [searchQuery]);
 
   // Nav links use absolute paths so they work from ANY page
   // (plain #anchors only resolve on the homepage)
@@ -149,6 +180,47 @@ export function Header() {
 
           {/* Right cluster */}
           <div className="flex items-center gap-1.5 lg:gap-3">
+            {/* Desktop search — with live category suggestions */}
+            <div ref={searchRef} className="relative hidden sm:block">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (searchQuery.trim()) {
+                    window.location.href = `/catalog?search=${encodeURIComponent(searchQuery)}`;
+                  }
+                }}
+                className="relative"
+              >
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSearchFocused(true)}
+                  placeholder={t.searchPlaceholder}
+                  aria-label={t.searchProducts}
+                  className={`hdr-search ${searchCls}`}
+                />
+                <SearchIcon className={searchIconCls} />
+              </form>
+              {searchFocused && searchResults.length > 0 && (
+                <div className="absolute top-full mt-2 w-64 xl:w-80 rounded-xl bg-ivory dark:bg-charcoal-light border border-charcoal/10 dark:border-charcoal-border shadow-float overflow-hidden z-50 scale-in origin-top">
+                  {searchResults.map((r) => (
+                    <a
+                      key={r.slug}
+                      href={`/catalog?category=${r.slug}`}
+                      onClick={() => {
+                        setSearchFocused(false);
+                        setSearchQuery('');
+                      }}
+                      className="block px-4 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-charcoal-elevated transition-colors"
+                    >
+                      {loc(locale, r.name)}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Favorites (wishlist) — hidden on smallest screens (in menu) */}
             <FavoritesBadge className={`border ${iconBorderCls} ${iconCls} hidden xs:flex`} />
 
