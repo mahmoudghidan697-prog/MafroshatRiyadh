@@ -18,7 +18,7 @@ export async function PUT(req: NextRequest) {
     await updateProduct(body.slug, {
       sku: body.sku ?? null,
       name: { ar: body.name.ar, en: body.name.en },
-      category: body.category,
+      categoryId: body.category,
       description: { ar: body.description?.ar ?? '', en: body.description?.en ?? '' },
       material: { ar: body.material?.ar ?? '', en: body.material?.en ?? '' },
       color: { ar: body.color?.ar ?? '', en: body.color?.en ?? '' },
