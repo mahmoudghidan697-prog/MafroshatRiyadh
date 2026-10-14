@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { FloatingContact } from '@/components/FloatingContact';
 import { AdminBar } from '@/components/AdminBar';
+import { ContactTracker } from '@/components/ContactTracker';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -95,6 +96,7 @@ export default function RootLayout({
             >
               تخطَّ إلى المحتوى
             </a>
+            <ContactTracker />
             <Header />
             <main id="main" className="min-h-[60vh]">
               {children}
