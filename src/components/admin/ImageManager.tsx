@@ -48,29 +48,36 @@ export function ImageManager({ currentImages, onSave, onClose, context = 'produc
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     setUploadError('');
     setUploading(true);
 
     try {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        setUploadError(locale === 'ar' ? 'الملف مش صورة' : 'Not an image file');
-        return;
-      }
+      const uploaded: string[] = [];
+      // Upload files sequentially (one at a time) to avoid rate limits
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
 
-      // Validate size (8MB max)
-      if (file.size > 8 * 1024 * 1024) {
-        setUploadError(locale === 'ar' ? 'الصورة كبيرة جداً (الحد ٨ ميجا)' : 'File too large (max 8MB)');
-        return;
-      }
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          setUploadError(locale === 'ar' ? `"${file.name}" مش صورة` : `"${file.name}" is not an image`);
+          continue;
+        }
+        // Validate size (8MB max)
+        if (file.size > 8 * 1024 * 1024) {
+          setUploadError(locale === 'ar' ? `"${file.name}" كبيرة جداً (الحد ٨ ميجا)` : `"${file.name}" too large (max 8MB)`);
+          continue;
+        }
 
-      // Read file as base64
-      const reader = new FileReader();
-      reader.onload = async () => {
-        const base64 = reader.result as string;
+        // Read file as base64
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
 
         // Generate a safe filename from the original
         const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -79,7 +86,7 @@ export function ImageManager({ currentImages, onSave, onClose, context = 'produc
           .replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '-')
           .toLowerCase()
           .slice(0, 50);
-        const filename = `${baseName || 'upload'}-${Date.now()}.${ext}`;
+        const filename = `${baseName || 'upload'}-${Date.now()}-${i}.${ext}`;
 
         const res = await fetch('/api/admin/upload', {
           method: 'POST',
@@ -89,26 +96,40 @@ export function ImageManager({ currentImages, onSave, onClose, context = 'produc
 
         if (res.ok) {
           const data = await res.json();
-          setSelected((prev) => [...prev, data.path]);
-          // Refresh the defaults list to include the new upload
-          const listRes = await fetch('/api/admin/upload');
-          if (listRes.ok) {
-            const listData = await listRes.json();
-            setDefaults({ products: listData.products, categories: listData.categories });
-          }
+          uploaded.push(data.path);
         } else {
           const err = await res.json();
-          setUploadError(err.error || (locale === 'ar' ? 'فشل الرفع' : 'Upload failed'));
+          setUploadError(err.error || (locale === 'ar' ? `فشل رفع "${file.name}"` : `Failed to upload "${file.name}"`));
         }
-      };
-      reader.readAsDataURL(file);
+      }
+
+      if (uploaded.length > 0) {
+        setSelected((prev) => [...prev, ...uploaded]);
+        // Refresh the defaults list to include the new uploads
+        const listRes = await fetch('/api/admin/upload');
+        if (listRes.ok) {
+          const listData = await listRes.json();
+          setDefaults({ products: listData.products, categories: listData.categories });
+        }
+      }
     } catch {
-      setUploadError(locale === 'ar' ? 'خطأ في قراءة الملف' : 'Error reading file');
+      setUploadError(locale === 'ar' ? 'خطأ في قراءة الملفات' : 'Error reading files');
     } finally {
       setUploading(false);
-      // Reset input so the same file can be re-selected
+      // Reset input so the same files can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  }
+
+  // Reorder: move image at index `i` left/right (right = toward main)
+  function moveImage(i: number, direction: 'left' | 'right') {
+    setSelected((prev) => {
+      const next = [...prev];
+      const target = direction === 'left' ? i - 1 : i + 1;
+      if (target < 0 || target >= next.length) return prev;
+      [next[i], next[target]] = [next[target], next[i]];
+      return next;
+    });
   }
 
   const library = context === 'category' ? defaults.categories : defaults.products;
@@ -142,6 +163,7 @@ export function ImageManager({ currentImages, onSave, onClose, context = 'produc
               {selected.map((img, i) => (
                 <div key={img + i} className="relative group rounded-xl overflow-hidden border border-charcoal/10 dark:border-charcoal-border aspect-[4/3]">
                   <img src={img} alt="" className="w-full h-full object-cover" />
+                  {/* Remove */}
                   <button
                     onClick={() => removeImage(img)}
                     className="absolute top-1 end-1 w-6 h-6 rounded-full bg-red-500 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
@@ -149,8 +171,29 @@ export function ImageManager({ currentImages, onSave, onClose, context = 'produc
                   >
                     ✕
                   </button>
+                  {/* Reorder buttons — first image is the main one */}
+                  <div className="absolute bottom-1 inset-x-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => moveImage(i, 'right')}
+                      disabled={i === selected.length - 1}
+                      className="w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center disabled:opacity-30 hover:bg-black/80"
+                      aria-label={locale === 'ar' ? 'تحريك لآخر' : 'Move right'}
+                      title={locale === 'ar' ? 'لآخر' : 'Move later'}
+                    >
+                      →
+                    </button>
+                    <button
+                      onClick={() => moveImage(i, 'left')}
+                      disabled={i === 0}
+                      className="w-6 h-6 rounded-full bg-black/60 text-white text-xs flex items-center justify-center disabled:opacity-30 hover:bg-black/80"
+                      aria-label={locale === 'ar' ? 'تحريك لأول' : 'Move left'}
+                      title={locale === 'ar' ? 'لأول (رئيسية)' : 'Move earlier (main)'}
+                    >
+                      ←
+                    </button>
+                  </div>
                   {i === 0 && (
-                    <span className="absolute bottom-1 start-1 px-1.5 py-0.5 rounded bg-forest text-ivory text-[10px] font-medium">
+                    <span className="absolute top-1 start-1 px-1.5 py-0.5 rounded bg-forest text-ivory text-[10px] font-medium">
                       {locale === 'ar' ? 'رئيسية' : 'Main'}
                     </span>
                   )}
@@ -168,6 +211,7 @@ export function ImageManager({ currentImages, onSave, onClose, context = 'produc
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/avif,image/gif"
+              multiple
               onChange={handleUpload}
               className="hidden"
               id="image-upload-input"
@@ -180,10 +224,10 @@ export function ImageManager({ currentImages, onSave, onClose, context = 'produc
               <span className="text-sm font-medium text-charcoal dark:text-ivory text-center">
                 {uploading
                   ? locale === 'ar' ? 'جاري الرفع...' : 'Uploading...'
-                  : locale === 'ar' ? 'ارفع صورة من جهازك' : 'Upload from your device'}
+                  : locale === 'ar' ? 'ارفع صورة أو أكثر من جهازك' : 'Upload image(s) from your device'}
               </span>
               <span className="text-xs text-charcoal/40 dark:text-ivory/40">
-                {locale === 'ar' ? 'JPG / PNG / WEBP — حد ٨ ميجا' : 'JPG / PNG / WEBP — max 8MB'}
+                {locale === 'ar' ? 'JPG / PNG / WEBP — حد ٨ ميجا لكل صورة' : 'JPG / PNG / WEBP — max 8MB each'}
               </span>
             </label>
             {uploadError && (
