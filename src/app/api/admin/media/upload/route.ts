@@ -62,8 +62,9 @@ export async function POST(req: NextRequest) {
             contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
           });
         } catch {
-          // Store is private — upload without forcing public access.
-          blob = await put(`products/${safeName}`, buffer, {
+          // Private store — retry; the SDK's private path uses the
+          // same put() with access omitted via a cast.
+          blob = await (put as any)(`products/${safeName}`, buffer, {
             token: blobToken,
             contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
           });

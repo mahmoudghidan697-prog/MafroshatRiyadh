@@ -82,7 +82,9 @@ export async function POST(req: NextRequest) {
             contentType: 'image/jpeg',
           });
         } catch {
-          blob = await put(`products/${safeName}`, buffer, {
+          // Private store — retry; the SDK's private path uses the
+          // same put() with access omitted via a cast.
+          blob = await (put as any)(`products/${safeName}`, buffer, {
             token: blobToken,
             contentType: 'image/jpeg',
           });
