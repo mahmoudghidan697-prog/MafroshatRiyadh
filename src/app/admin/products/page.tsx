@@ -17,6 +17,15 @@ interface Product {
   published?: boolean;
   seoTitle?: string;
   seoDescription?: string;
+  material?: { ar: string; en: string };
+  color?: { ar: string; en: string };
+  description?: { ar: string; en: string };
+  dimensions?: { ar: string; en: string };
+  unit?: { ar: string; en: string };
+  specs?: any[];
+  variations?: any[];
+  useCases?: string[];
+  createdAt?: string;
 }
 
 export default function AdminProducts() {
@@ -73,17 +82,13 @@ function AdminProductsContent() {
   }
 
   async function handleSaveImages(product: Product, images: string[]) {
-    const payload = {
-      slug: product.slug,
-      sku: product.sku,
-      name: product.name,
-      category: product.category,
-      price: product.price,
-      featured: product.featured,
+    // Send the FULL product so no field (material, color, description,
+    // specs, variations, use_cases, seo) gets wiped by a partial update.
+    const payload: any = {
+      ...product,
+      // Normalize price to a plain number (the list view stores {amount})
+      price: product.price?.amount ?? product.price ?? null,
       images,
-      material: { ar: '', en: '' },
-      color: { ar: '', en: '' },
-      description: { ar: '', en: '' },
     };
     const res = await fetch(`/api/admin/products?slug=${encodeURIComponent(product.slug)}`, {
       method: 'PUT',
@@ -276,11 +281,27 @@ function ProductForm({
       price: form.price ? parseInt(form.price) : null,
       featured: form.featured,
       images: form.images,
-      material: { ar: '', en: '' },
-      color: { ar: '', en: '' },
-      description: { ar: '', en: '' },
       seoTitle: form.seoTitle || undefined,
       seoDescription: form.seoDescription || undefined,
+      // Preserve existing bilingual fields — this form doesn't edit them,
+      // so sending empty values here would wipe them from the DB.
+      ...(product
+        ? {
+            material: product.material,
+            color: product.color,
+            description: product.description,
+            dimensions: product.dimensions,
+            unit: product.unit,
+            specs: product.specs,
+            variations: product.variations,
+            useCases: product.useCases,
+            published: product.published,
+          }
+        : {
+            material: { ar: '', en: '' },
+            color: { ar: '', en: '' },
+            description: { ar: '', en: '' },
+          }),
     };
 
     try {
