@@ -76,7 +76,7 @@ function CatalogContent() {
     });
 
     return result;
-  }, [search, category, color, material, useCase, sort, locale]);
+  }, [products, search, category, color, material, useCase, sort, locale]);
 
   const shown = filtered.slice(0, visible);
   const hasMore = visible < filtered.length;
