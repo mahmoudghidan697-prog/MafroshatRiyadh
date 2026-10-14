@@ -52,23 +52,11 @@ export async function POST(req: NextRequest) {
     if (blobToken) {
       try {
         const { put } = await import('@vercel/blob');
-        // Try public access first; fall back to the store's default
-        // (private) access if the store was created as private.
-        let blob: { url: string };
-        try {
-          blob = await put(`products/${safeName}`, buffer, {
-            access: 'public',
-            token: blobToken,
-            contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-          });
-        } catch {
-          // Private store — retry; the SDK's private path uses the
-          // same put() with access omitted via a cast.
-          blob = await (put as any)(`products/${safeName}`, buffer, {
-            token: blobToken,
-            contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-          });
-        }
+        const blob = await put(`products/${safeName}`, buffer, {
+          access: 'public',
+          token: blobToken,
+          contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+        });
         return NextResponse.json({ ok: true, path: blob.url, size: buffer.length });
       } catch (blobErr: any) {
         return NextResponse.json(
