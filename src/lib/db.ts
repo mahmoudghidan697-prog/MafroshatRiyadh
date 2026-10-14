@@ -366,6 +366,20 @@ export async function deleteProduct(slug: string) {
   await db.execute({ sql: 'DELETE FROM products WHERE slug = ?', args: [slug] });
 }
 
+// Update ONLY the images column — used by the admin image manager so it
+// can never accidentally wipe other product fields.
+export async function updateProductImages(slug: string, images: string[]) {
+  await ensureSchema();
+  const db = getDb();
+  const existing = await db.execute({ sql: 'SELECT id FROM products WHERE slug = ?', args: [slug] });
+  if (existing.rows.length === 0) return false;
+  await db.execute({
+    sql: 'UPDATE products SET images = ? WHERE slug = ?',
+    args: [JSON.stringify(images), slug],
+  });
+  return true;
+}
+
 // ─── Categories CRUD ───
 
 export async function createCategory(c: Category) {

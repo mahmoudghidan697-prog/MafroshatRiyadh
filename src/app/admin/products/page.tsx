@@ -82,20 +82,12 @@ function AdminProductsContent() {
   }
 
   async function handleSaveImages(product: Product, images: string[]) {
-    // Send the FULL product so no field (material, color, description,
-    // specs, variations, use_cases, seo) gets wiped by a partial update.
-    // `published` is omitted — never let an image save toggle visibility.
-    const { published, ...rest } = product;
-    const payload: any = {
-      ...rest,
-      // Normalize price to a plain number (the list view stores {amount})
-      price: product.price?.amount ?? product.price ?? null,
-      images,
-    };
-    const res = await fetch(`/api/admin/products?slug=${encodeURIComponent(product.slug)}`, {
+    // Dedicated endpoint updates ONLY the images column — it can never
+    // wipe material, color, description, or the published flag.
+    const res = await fetch(`/api/admin/products/images?slug=${encodeURIComponent(product.slug)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ images }),
     });
     if (res.ok) toast(locale === 'ar' ? 'تم حفظ الصور' : 'Images saved');
     else toast(locale === 'ar' ? 'فشل الحفظ' : 'Save failed', 'error');
