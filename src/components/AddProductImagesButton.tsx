@@ -57,24 +57,14 @@ export function AddProductImagesButton({
   async function handleSave(images: string[]) {
     setSaving(true);
     try {
-      const payload = {
-        slug: product.slug,
-        sku: product.sku,
-        name: product.name,
-        category: product.category,
-        price: product.price,
-        featured: product.featured,
-        images,
-        material: { ar: '', en: '' },
-        color: { ar: '', en: '' },
-        description: { ar: '', en: '' },
-      };
+      // Use the dedicated images endpoint — it updates ONLY the images
+      // column, so it can never wipe specs or toggle published state.
       const res = await fetch(
-        `/api/admin/products?slug=${encodeURIComponent(product.slug)}`,
+        `/api/admin/products/images?slug=${encodeURIComponent(product.slug)}`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ images }),
         },
       );
       if (res.ok) {
