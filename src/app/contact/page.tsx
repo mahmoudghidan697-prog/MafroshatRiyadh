@@ -5,6 +5,8 @@ import { useApp } from '@/context/AppContext';
 import { contact } from '@/data/site';
 import { loc } from '@/lib/i18n';
 import { useContacts } from '@/hooks/useContacts';
+import { useSiteData } from '@/hooks/useSiteData';
+import { ContactEditBadge } from '@/components/ContactEditBadge';
 import { SectionHeader } from '@/components/SectionHeader';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import {
@@ -21,6 +23,7 @@ type Errors = Partial<Record<'name' | 'phone' | 'email' | 'message', string>>;
 export default function ContactPage() {
   const { locale, t } = useApp();
   const { waLink, phoneLink, number: contactNumber } = useContacts();
+  const { refresh } = useSiteData();
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -99,43 +102,53 @@ export default function ContactPage() {
                 </h2>
 
                 <div className="space-y-4 mb-8">
-                  <a
-                    href={waLink('contact_page_whatsapp', waMessage)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-contact-key="contact_page_whatsapp"
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20 hover:bg-[#25D366]/15 transition-colors group"
-                  >
-                    <span className="w-12 h-12 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0">
-                      <WhatsAppIcon className="w-6 h-6" />
-                    </span>
-                    <span>
-                      <span className="block font-semibold text-charcoal dark:text-ivory">
-                        {t.whatsappUs}
+                  <div className="relative">
+                    <a
+                      href={waLink('contact_page_whatsapp', waMessage)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-contact-key="contact_page_whatsapp"
+                      className="flex items-center gap-4 p-4 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20 hover:bg-[#25D366]/15 transition-colors group"
+                    >
+                      <span className="w-12 h-12 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0">
+                        <WhatsAppIcon className="w-6 h-6" />
                       </span>
-                      <span className="block text-sm text-charcoal/60 dark:text-ivory/60">
-                        {t.responseTime}
+                      <span>
+                        <span className="block font-semibold text-charcoal dark:text-ivory">
+                          {t.whatsappUs}
+                        </span>
+                        <span className="block text-sm text-charcoal/60 dark:text-ivory/60">
+                          {t.responseTime}
+                        </span>
                       </span>
+                    </a>
+                    <span className="absolute top-2 end-2">
+                      <ContactEditBadge contactKey="contact_page_whatsapp" currentNumber={contactNumber('contact_page_whatsapp')} onSaved={refresh} />
                     </span>
-                  </a>
+                  </div>
 
-                  <a
-                    href={phoneLink('contact_page_phone')}
-                    data-contact-key="contact_page_phone"
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-forest/10 border border-forest/20 hover:bg-forest/15 transition-colors"
-                  >
-                    <span className="w-12 h-12 rounded-xl bg-forest text-ivory flex items-center justify-center shrink-0">
-                      <PhoneIcon className="w-5 h-5" />
-                    </span>
-                    <span>
-                      <span className="block font-semibold text-charcoal dark:text-ivory">
-                        {t.callUs}
+                  <div className="relative">
+                    <a
+                      href={phoneLink('contact_page_phone')}
+                      data-contact-key="contact_page_phone"
+                      className="flex items-center gap-4 p-4 rounded-2xl bg-forest/10 border border-forest/20 hover:bg-forest/15 transition-colors"
+                    >
+                      <span className="w-12 h-12 rounded-xl bg-forest text-ivory flex items-center justify-center shrink-0">
+                        <PhoneIcon className="w-5 h-5" />
                       </span>
-                      <span className="block text-sm text-charcoal/60 dark:text-ivory/60" dir="ltr">
-                        {contactNumber('contact_page_phone') || contact.phoneDisplay}
+                      <span>
+                        <span className="block font-semibold text-charcoal dark:text-ivory">
+                          {t.callUs}
+                        </span>
+                        <span className="block text-sm text-charcoal/60 dark:text-ivory/60" dir="ltr">
+                          {contactNumber('contact_page_phone') || contact.phoneDisplay}
+                        </span>
                       </span>
+                    </a>
+                    <span className="absolute top-2 end-2">
+                      <ContactEditBadge contactKey="contact_page_phone" currentNumber={contactNumber('contact_page_phone')} onSaved={refresh} />
                     </span>
-                  </a>
+                  </div>
 
                   <a
                     href={`mailto:${contact.email}`}

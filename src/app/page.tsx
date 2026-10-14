@@ -8,6 +8,7 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { useSiteData } from '@/hooks/useSiteData';
 import { useContacts } from '@/hooks/useContacts';
+import { ContactEditBadge } from '@/components/ContactEditBadge';
 import { ReviewForm } from '@/components/ReviewForm';
 import {
   WhatsAppIcon,
@@ -23,11 +24,11 @@ import { useState } from 'react';
 
 export default function HomePage() {
   const { locale, t } = useApp();
-  const { waLink, phoneLink } = useContacts();
+  const { waLink, phoneLink, number: contactNumber } = useContacts();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Live catalog data from the DB (falls back to static seed)
-  const { products, categories, testimonials: testimonialsFromDb, services, faqs } = useSiteData();
+  const { products, categories, testimonials: testimonialsFromDb, services, faqs, refresh } = useSiteData();
   const featured = products.filter((p) => p.featured);
   const galleryItems = products.slice(0, 6);
   const waDefault = waLink('home_whatsapp', t.whatsappMessageDefault);
@@ -102,24 +103,34 @@ export default function HomePage() {
                 {t.heroCtaBrowse}
                 <ArrowRightIcon className="w-4 h-4 flip-rtl" />
               </a>
-              <a
-                href={waDefault}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-contact-key="home_whatsapp"
-                className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 shadow-lg"
-              >
-                <WhatsAppIcon className="w-5 h-5" />
-                {t.heroCtaWhatsapp}
-              </a>
-              <a
-                href={phoneLink('home_phone')}
-                data-contact-key="home_phone"
-                className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl border-2 border-white/30 text-white font-medium hover:border-white hover:bg-white/10 backdrop-blur-sm"
-              >
-                <PhoneIcon className="w-5 h-5" />
-                {t.heroCtaCall}
-              </a>
+              <div className="relative">
+                <a
+                  href={waDefault}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-contact-key="home_whatsapp"
+                  className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 shadow-lg"
+                >
+                  <WhatsAppIcon className="w-5 h-5" />
+                  {t.heroCtaWhatsapp}
+                </a>
+                <span className="absolute -top-1 -end-1">
+                  <ContactEditBadge contactKey="home_whatsapp" currentNumber={contactNumber('home_whatsapp')} onSaved={refresh} />
+                </span>
+              </div>
+              <div className="relative">
+                <a
+                  href={phoneLink('home_phone')}
+                  data-contact-key="home_phone"
+                  className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl border-2 border-white/30 text-white font-medium hover:border-white hover:bg-white/10 backdrop-blur-sm"
+                >
+                  <PhoneIcon className="w-5 h-5" />
+                  {t.heroCtaCall}
+                </a>
+                <span className="absolute -top-1 -end-1">
+                  <ContactEditBadge contactKey="home_phone" currentNumber={contactNumber('home_phone')} onSaved={refresh} />
+                </span>
+              </div>
             </div>
 
             {/* Product count badge */}

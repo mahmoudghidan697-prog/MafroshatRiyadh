@@ -7,6 +7,7 @@ import { business, categories } from '@/data/site';
 import { loc } from '@/lib/i18n';
 import { useSiteData } from '@/hooks/useSiteData';
 import { useContacts } from '@/hooks/useContacts';
+import { ContactEditBadge } from '@/components/ContactEditBadge';
 import { FavoritesBadge } from './FavoritesBadge';
 import {
   WhatsAppIcon,
@@ -36,7 +37,7 @@ export function Header() {
   const isHome = pathname === '/';
 
   // Live settings (logo) from the DB; falls back to the static value.
-  const { settings } = useSiteData();
+  const { settings, refresh } = useSiteData();
   const logo = settings.logo || business.logo;
 
   // Is the current visitor a logged-in admin? If so, the logo becomes a
@@ -252,29 +253,39 @@ export function Header() {
             </button>
 
             {/* WhatsApp — always visible (primary contact) */}
-            <a
-              href={waLink('header_whatsapp', t.whatsappMessageDefault)}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={t.whatsapp}
-              title={t.whatsappTooltip}
-              data-contact-key="header_whatsapp"
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-[#25D366] text-white hover:brightness-95 transition-all shadow-md shrink-0"
-            >
-              <WhatsAppIcon className="w-4 h-4" />
-            </a>
+            <div className="relative shrink-0">
+              <a
+                href={waLink('header_whatsapp', t.whatsappMessageDefault)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t.whatsapp}
+                title={t.whatsappTooltip}
+                data-contact-key="header_whatsapp"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-[#25D366] text-white hover:brightness-95 transition-all shadow-md"
+              >
+                <WhatsAppIcon className="w-4 h-4" />
+              </a>
+              <span className="absolute -top-1 -end-1">
+                <ContactEditBadge contactKey="header_whatsapp" currentNumber={contactNumber('header_whatsapp')} onSaved={refresh} />
+              </span>
+            </div>
 
             {/* Contact — desktop only */}
-            <a
-              href={phoneLink('header_phone')}
-              aria-label={t.call}
-              title={t.callTooltip}
-              data-contact-key="header_phone"
-              className="hidden xl:flex items-center gap-2 h-9 px-3.5 rounded-full bg-forest text-ivory text-sm font-medium hover:bg-forest-light transition-colors whitespace-nowrap"
-            >
-              <PhoneIcon className="w-4 h-4 shrink-0" />
-              <span dir="ltr">{contactNumber('header_phone') || '—'}</span>
-            </a>
+            <div className="relative hidden xl:block">
+              <a
+                href={phoneLink('header_phone')}
+                aria-label={t.call}
+                title={t.callTooltip}
+                data-contact-key="header_phone"
+                className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-forest text-ivory text-sm font-medium hover:bg-forest-light transition-colors whitespace-nowrap"
+              >
+                <PhoneIcon className="w-4 h-4 shrink-0" />
+                <span dir="ltr">{contactNumber('header_phone') || '—'}</span>
+              </a>
+              <span className="absolute -top-1 -end-1">
+                <ContactEditBadge contactKey="header_phone" currentNumber={contactNumber('header_phone')} onSaved={refresh} />
+              </span>
+            </div>
 
             {/* Mobile menu toggle */}
             <button

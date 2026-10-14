@@ -5,13 +5,13 @@ import { business, contact, categories } from '@/data/site';
 import { loc } from '@/lib/i18n';
 import { useSiteData } from '@/hooks/useSiteData';
 import { useContacts } from '@/hooks/useContacts';
+import { ContactEditBadge } from '@/components/ContactEditBadge';
 import { WhatsAppIcon, PhoneIcon, MailIcon, MapPinIcon, ClockIcon } from './Icons';
 
 export function Footer() {
   const { locale, t } = useApp();
   const { waLink, phoneLink, number: contactNumber } = useContacts();
-  // Live logo from the DB (uploaded via admin); falls back to the "م" letter.
-  const { settings } = useSiteData();
+  const { settings, refresh } = useSiteData();
   const logo = settings.logo || business.logo;
 
   const quickLinks = [
@@ -89,26 +89,36 @@ export function Footer() {
             <h3 className="font-semibold text-ivory mb-4">{t.navContact}</h3>
             <ul className="space-y-3 text-sm">
               <li>
-                <a
-                  href={phoneLink('footer_phone')}
-                  className="flex items-center gap-2.5 text-ivory/70 hover:text-ivory transition-colors"
-                  data-contact-key="footer_phone"
-                >
-                  <PhoneIcon className="w-4 h-4 shrink-0" />
-                  <span dir="ltr">{contactNumber('footer_phone') || '—'}</span>
-                </a>
+                <div className="relative flex items-center">
+                  <a
+                    href={phoneLink('footer_phone')}
+                    className="flex items-center gap-2.5 text-ivory/70 hover:text-ivory transition-colors"
+                    data-contact-key="footer_phone"
+                  >
+                    <PhoneIcon className="w-4 h-4 shrink-0" />
+                    <span dir="ltr">{contactNumber('footer_phone') || '—'}</span>
+                  </a>
+                  <span className="absolute -top-1 -end-1">
+                    <ContactEditBadge contactKey="footer_phone" currentNumber={contactNumber('footer_phone')} onSaved={refresh} />
+                  </span>
+                </div>
               </li>
               <li>
-                <a
-                  href={waLink('footer_whatsapp', locale === 'ar' ? t.whatsappMessageDefault : t.whatsappMessageDefault)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2.5 text-ivory/70 hover:text-ivory transition-colors"
-                  data-contact-key="footer_whatsapp"
-                >
-                  <WhatsAppIcon className="w-4 h-4 shrink-0" />
-                  {t.whatsappLabel}
-                </a>
+                <div className="relative flex items-center">
+                  <a
+                    href={waLink('footer_whatsapp', locale === 'ar' ? t.whatsappMessageDefault : t.whatsappMessageDefault)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2.5 text-ivory/70 hover:text-ivory transition-colors"
+                    data-contact-key="footer_whatsapp"
+                  >
+                    <WhatsAppIcon className="w-4 h-4 shrink-0" />
+                    {t.whatsappLabel}
+                  </a>
+                  <span className="absolute -top-1 -end-1">
+                    <ContactEditBadge contactKey="footer_whatsapp" currentNumber={contactNumber('footer_whatsapp')} onSaved={refresh} />
+                  </span>
+                </div>
               </li>
               <li>
                 <a

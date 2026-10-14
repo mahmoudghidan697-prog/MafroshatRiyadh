@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Product, Category } from '@/data/site';
 import { products as staticProducts, categories as staticCategories, services as staticServices, faqs as staticFaqs } from '@/data/site';
 
@@ -25,6 +25,8 @@ interface SiteData {
   loading: boolean;
   /** true when data came from the live database */
   live: boolean;
+  /** Force a re-fetch (e.g. after editing a contact number inline) */
+  refresh: () => void;
 }
 
 const CACHE_KEY = 'ms_site_data_v1';
@@ -81,6 +83,10 @@ export function useSiteData(): SiteData {
   });
   const [loading, setLoading] = useState(!cached);
 
+  // fetch function — defined at component level so refresh() can reuse it
+  const loadRef = useRef<() => Promise<void>>(async () => {});
+  const refresh = useCallback(() => { loadRef.current(); }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -124,11 +130,12 @@ export function useSiteData(): SiteData {
       }
     }
 
+    loadRef.current = load;
     load();
     return () => {
       cancelled = true;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { ...data, loading };
+  return { ...data, loading, refresh };
 }

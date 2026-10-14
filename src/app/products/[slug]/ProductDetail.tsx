@@ -5,6 +5,7 @@ import { useApp } from '@/context/AppContext';
 import { getCategory as staticGetCategory } from '@/data/site';
 import { loc, formatPrice } from '@/lib/i18n';
 import { useContacts } from '@/hooks/useContacts';
+import { ContactEditBadge } from '@/components/ContactEditBadge';
 import { ProductCard } from '@/components/ProductCard';
 import { AddProductImagesButton } from '@/components/AddProductImagesButton';
 import { useSiteData } from '@/hooks/useSiteData';
@@ -18,7 +19,8 @@ import {
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
   const { locale, t } = useApp();
-  const { waLink, phoneLink } = useContacts();
+  const { waLink, phoneLink, number: contactNumber } = useContacts();
+  const { refresh } = useSiteData();
   const [activeImage, setActiveImage] = useState(0);
   const [openSpec, setOpenSpec] = useState(true);
 
@@ -210,24 +212,34 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
 
             {/* Contact CTAs */}
             <div className="flex flex-wrap gap-3 mb-8">
-              <a
-                href={waLink('product_detail_whatsapp', detailWaMsg)}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-contact-key="product_detail_whatsapp"
-                className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 transition-all"
-              >
-                <WhatsAppIcon className="w-5 h-5" />
-                {t.inquireWhatsapp}
-              </a>
-              <a
-                href={phoneLink('product_detail_phone')}
-                data-contact-key="product_detail_phone"
-                className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-forest text-ivory font-medium hover:bg-forest-light transition-colors"
-              >
-                <PhoneIcon className="w-5 h-5" />
-                {t.callNow}
-              </a>
+              <div className="relative">
+                <a
+                  href={waLink('product_detail_whatsapp', detailWaMsg)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-contact-key="product_detail_whatsapp"
+                  className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 transition-all"
+                >
+                  <WhatsAppIcon className="w-5 h-5" />
+                  {t.inquireWhatsapp}
+                </a>
+                <span className="absolute -top-1 -end-1">
+                  <ContactEditBadge contactKey="product_detail_whatsapp" currentNumber={contactNumber('product_detail_whatsapp')} onSaved={refresh} />
+                </span>
+              </div>
+              <div className="relative">
+                <a
+                  href={phoneLink('product_detail_phone')}
+                  data-contact-key="product_detail_phone"
+                  className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-forest text-ivory font-medium hover:bg-forest-light transition-colors"
+                >
+                  <PhoneIcon className="w-5 h-5" />
+                  {t.callNow}
+                </a>
+                <span className="absolute -top-1 -end-1">
+                  <ContactEditBadge contactKey="product_detail_phone" currentNumber={contactNumber('product_detail_phone')} onSaved={refresh} />
+                </span>
+              </div>
             </div>
 
             {/* Description */}
