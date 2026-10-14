@@ -52,11 +52,22 @@ export async function POST(req: NextRequest) {
     if (blobToken) {
       try {
         const { put } = await import('@vercel/blob');
-        const blob = await put(`products/${safeName}`, buffer, {
-          access: 'public',
-          token: blobToken,
-          contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-        });
+        // Try public access first; fall back to the store's default
+        // (private) access if the store was created as private.
+        let blob: { url: string };
+        try {
+          blob = await put(`products/${safeName}`, buffer, {
+            access: 'public',
+            token: blobToken,
+            contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+          });
+        } catch {
+          // Store is private — upload without forcing public access.
+          blob = await put(`products/${safeName}`, buffer, {
+            token: blobToken,
+            contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+          });
+        }
         return NextResponse.json({ ok: true, path: blob.url, size: buffer.length });
       } catch (blobErr: any) {
         return NextResponse.json(
