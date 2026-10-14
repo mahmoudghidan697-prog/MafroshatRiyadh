@@ -2,8 +2,11 @@ import type { Metadata } from 'next';
 import { getProductBySlug, getProducts } from '@/lib/db';
 import ProductDetail from './ProductDetail';
 
-// Pre-render the products that exist at build time; new products
-// added via the admin are served on-demand (dynamic rendering).
+// Products are rendered on-demand (dynamic) so admin edits — new images,
+// specs, prices — appear immediately instead of serving a stale
+// pre-rendered HTML page from the build.
+export const dynamic = 'force-dynamic';
+
 export async function generateStaticParams() {
   try {
     const products = await getProducts();

@@ -257,6 +257,16 @@ function ProductForm({
     images: product?.images || ([] as string[]),
     seoTitle: product?.seoTitle || '',
     seoDescription: product?.seoDescription || '',
+    material_ar: product?.material?.ar || '',
+    material_en: product?.material?.en || '',
+    color_ar: product?.color?.ar || '',
+    color_en: product?.color?.en || '',
+    dimensions_ar: product?.dimensions?.ar || '',
+    dimensions_en: product?.dimensions?.en || '',
+    unit_ar: product?.unit?.ar || '',
+    unit_en: product?.unit?.en || '',
+    description_ar: product?.description?.ar || '',
+    description_en: product?.description?.en || '',
   });
   const [showImageManager, setShowImageManager] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -277,25 +287,21 @@ function ProductForm({
       images: form.images,
       seoTitle: form.seoTitle || undefined,
       seoDescription: form.seoDescription || undefined,
-      // Preserve existing bilingual fields — this form doesn't edit them,
-      // so sending empty values here would wipe them from the DB.
+      // Product attributes — editable in this form now
+      material: { ar: form.material_ar, en: form.material_en },
+      color: { ar: form.color_ar, en: form.color_en },
+      dimensions: form.dimensions_ar ? { ar: form.dimensions_ar, en: form.dimensions_en } : undefined,
+      unit: form.unit_ar ? { ar: form.unit_ar, en: form.unit_en } : undefined,
+      description: { ar: form.description_ar, en: form.description_en },
+      // Preserve fields this form doesn't edit
       ...(product
         ? {
-            material: product.material,
-            color: product.color,
-            description: product.description,
-            dimensions: product.dimensions,
-            unit: product.unit,
             specs: product.specs,
             variations: product.variations,
             useCases: product.useCases,
             published: product.published,
           }
-        : {
-            material: { ar: '', en: '' },
-            color: { ar: '', en: '' },
-            description: { ar: '', en: '' },
-          }),
+        : {}),
     };
 
     try {
@@ -456,6 +462,127 @@ function ProductForm({
               {locale === 'ar' ? 'منتج مميز' : 'Featured product'}
             </span>
           </label>
+
+          {/* Product attributes — bilingual (ar/en) */}
+          <div className="pt-2 border-t border-charcoal/10 dark:border-charcoal-border space-y-3">
+            <p className="text-xs font-semibold text-charcoal/70 dark:text-ivory/70">
+              {locale === 'ar' ? 'المواصفات' : 'Specifications'}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'المادة (عربي)' : 'Material (AR)'}
+                </span>
+                <input
+                  value={form.material_ar}
+                  onChange={(e) => setForm({ ...form, material_ar: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'المادة (إنجليزي)' : 'Material (EN)'}
+                </span>
+                <input
+                  value={form.material_en}
+                  onChange={(e) => setForm({ ...form, material_en: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'اللون (عربي)' : 'Color (AR)'}
+                </span>
+                <input
+                  value={form.color_ar}
+                  onChange={(e) => setForm({ ...form, color_ar: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'اللون (إنجليزي)' : 'Color (EN)'}
+                </span>
+                <input
+                  value={form.color_en}
+                  onChange={(e) => setForm({ ...form, color_en: e.target.value })}
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'المقاسات (عربي)' : 'Dimensions (AR)'}
+                </span>
+                <input
+                  value={form.dimensions_ar}
+                  onChange={(e) => setForm({ ...form, dimensions_ar: e.target.value })}
+                  placeholder="50 × 50 سم"
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'المقاسات (إنجليزي)' : 'Dimensions (EN)'}
+                </span>
+                <input
+                  value={form.dimensions_en}
+                  onChange={(e) => setForm({ ...form, dimensions_en: e.target.value })}
+                  placeholder="50 × 50 cm"
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'الوحدة (عربي)' : 'Unit (AR)'}
+                </span>
+                <input
+                  value={form.unit_ar}
+                  onChange={(e) => setForm({ ...form, unit_ar: e.target.value })}
+                  placeholder="للبلاطة"
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                  {locale === 'ar' ? 'الوحدة (إنجليزي)' : 'Unit (EN)'}
+                </span>
+                <input
+                  value={form.unit_en}
+                  onChange={(e) => setForm({ ...form, unit_en: e.target.value })}
+                  placeholder="per tile"
+                  className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+                />
+              </label>
+            </div>
+            <label className="block">
+              <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                {locale === 'ar' ? 'الوصف (عربي)' : 'Description (AR)'}
+              </span>
+              <textarea
+                rows={3}
+                value={form.description_ar}
+                onChange={(e) => setForm({ ...form, description_ar: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm resize-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs text-charcoal/60 dark:text-ivory/60 mb-1 block">
+                {locale === 'ar' ? 'الوصف (إنجليزي)' : 'Description (EN)'}
+              </span>
+              <textarea
+                rows={3}
+                value={form.description_en}
+                onChange={(e) => setForm({ ...form, description_en: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm resize-none"
+              />
+            </label>
+          </div>
 
           {/* SEO fields — optional, auto-generated from name if empty */}
           <div className="pt-2 border-t border-charcoal/10 dark:border-charcoal-border">
