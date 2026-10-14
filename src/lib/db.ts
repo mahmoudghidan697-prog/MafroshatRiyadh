@@ -99,18 +99,30 @@ async function ensureSchema() {
   await migrateContactEventsKey();
 }
 
-// Add contact_key column to contact_events if it doesn't exist yet
-// (tables created before the contact-icon system lack it).
+// Safe migrations that run every time (not gated by schemaReady) so new
+// tables/columns reach databases created before this feature shipped.
 async function migrateContactEventsKey() {
   try {
     const db = getDb();
+    // Ensure the contacts table exists (older DBs created before the
+    // contact-icon system lack it — schemaReady may already be true).
+    await db.execute({
+      sql: `CREATE TABLE IF NOT EXISTS contacts (
+        key TEXT PRIMARY KEY, name_ar TEXT NOT NULL, name_en TEXT NOT NULL,
+        type TEXT NOT NULL, number TEXT NOT NULL,
+        location_ar TEXT NOT NULL, location_en TEXT NOT NULL,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      )`,
+      args: [],
+    });
     const info = await db.execute({ sql: 'PRAGMA table_info(contact_events)', args: [] });
     const has = info.rows.some((r: any) => r.name === 'contact_key');
     if (!has) {
       await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN contact_key TEXT', args: [] });
     }
   } catch {
-    // Column already exists or table absent — ignore
+    // Ignore — best effort
   }
 }
 
