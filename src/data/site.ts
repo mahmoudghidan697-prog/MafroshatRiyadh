@@ -115,6 +115,8 @@ export interface Product {
   // Per-product SEO (optional; auto-generated from name/description if empty)
   seoTitle?: string;
   seoDescription?: string;
+  // Publication state — admin controls this; DB-backed
+  published?: boolean;
 }
 
 export interface Category {
