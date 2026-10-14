@@ -84,8 +84,10 @@ function AdminProductsContent() {
   async function handleSaveImages(product: Product, images: string[]) {
     // Send the FULL product so no field (material, color, description,
     // specs, variations, use_cases, seo) gets wiped by a partial update.
+    // `published` is omitted — never let an image save toggle visibility.
+    const { published, ...rest } = product;
     const payload: any = {
-      ...product,
+      ...rest,
       // Normalize price to a plain number (the list view stores {amount})
       price: product.price?.amount ?? product.price ?? null,
       images,

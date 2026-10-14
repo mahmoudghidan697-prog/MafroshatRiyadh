@@ -347,7 +347,7 @@ export async function updateProduct(slug: string, updates: Partial<Product>) {
       fields.push(`${dbCol} = ?`);
       if (key === 'specs' || key === 'variations' || key === 'useCases' || key === 'images') {
         args.push(JSON.stringify(value));
-      } else if (key === 'featured') {
+      } else if (key === 'featured' || key === 'published') {
         args.push(value ? 1 : 0);
       } else {
         args.push(value);
