@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, getProducts, getCategories, createProduct, updateProduct, deleteProduct } from '@/lib/db';
+import { getDb, getAllProducts, getCategories, createProduct, updateProduct, deleteProduct } from '@/lib/db';
 
 export async function GET() {
-  const products = await getProducts();
+  const products = await getAllProducts();
   const categories = await getCategories();
   return NextResponse.json({ products, categories });
 }

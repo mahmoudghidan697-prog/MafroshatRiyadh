@@ -90,6 +90,7 @@ function rowToProduct(r: any): Product {
     images: JSON.parse(r.images), featured: !!r.featured, createdAt: r.created_at,
     specs: JSON.parse(r.specs), variations: JSON.parse(r.variations ?? '[]'),
     useCases: JSON.parse(r.use_cases ?? '[]'),
+    published: !!r.published,
     seoTitle: r.seo_title ?? undefined, seoDescription: r.seo_description ?? undefined,
   };
 }
@@ -115,6 +116,15 @@ export async function getProducts(): Promise<Product[]> {
   await ensureSchema();
   const db = getDb();
   const result = await db.execute('SELECT * FROM products WHERE published = 1 ORDER BY created_at DESC');
+  return result.rows.map(rowToProduct);
+}
+
+// Admin variant — returns ALL products (published AND unpublished) so the
+// admin can see and manage everything.
+export async function getAllProducts(): Promise<Product[]> {
+  await ensureSchema();
+  const db = getDb();
+  const result = await db.execute('SELECT * FROM products ORDER BY created_at DESC');
   return result.rows.map(rowToProduct);
 }
 
