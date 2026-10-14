@@ -14,6 +14,7 @@
 import { createClient, type Client } from '@libsql/client';
 import path from 'path';
 import fs from 'fs';
+import { contact as staticContact } from '@/data/site';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -133,7 +134,6 @@ async function seedContacts() {
 // ─── Row → App types ───
 
 import type { Product, Category } from '@/data/site';
-import { contact as staticContact } from '@/data/site';
 
 function rowToProduct(r: any): Product {
   return {
