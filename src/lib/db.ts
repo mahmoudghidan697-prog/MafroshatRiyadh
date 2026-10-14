@@ -311,17 +311,49 @@ export async function updateProduct(slug: string, updates: Partial<Product>) {
   const db = getDb();
   const fields: string[] = [];
   const args: any[] = [];
+
   for (const [key, value] of Object.entries(updates)) {
-    const dbCol = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-    fields.push(`${dbCol} = ?`);
-    if (key === 'specs' || key === 'variations' || key === 'useCases' || key === 'images') {
-      args.push(JSON.stringify(value));
-    } else if (key === 'featured') {
-      args.push(value ? 1 : 0);
+    if (value === undefined) continue;
+
+    // Bilingual fields map to two columns (name_ar / name_en, etc.)
+    if (key === 'name') {
+      const v = value as { ar: string; en: string };
+      fields.push('name_ar = ?', 'name_en = ?');
+      args.push(v.ar, v.en);
+    } else if (key === 'description') {
+      const v = value as { ar: string; en: string };
+      fields.push('description_ar = ?', 'description_en = ?');
+      args.push(v.ar, v.en);
+    } else if (key === 'material') {
+      const v = value as { ar: string; en: string };
+      fields.push('material_ar = ?', 'material_en = ?');
+      args.push(v.ar, v.en);
+    } else if (key === 'color') {
+      const v = value as { ar: string; en: string };
+      fields.push('color_ar = ?', 'color_en = ?');
+      args.push(v.ar, v.en);
+    } else if (key === 'dimensions') {
+      const v = value as { ar: string; en: string };
+      fields.push('dimensions_ar = ?', 'dimensions_en = ?');
+      args.push(v.ar, v.en);
+    } else if (key === 'unit') {
+      const v = value as { ar: string; en: string };
+      fields.push('unit_ar = ?', 'unit_en = ?');
+      args.push(v.ar, v.en);
     } else {
-      args.push(value);
+      // Single-column fields: camelCase → snake_case
+      const dbCol = key.replace(/([A-Z])/g, '_$1').toLowerCase();
+      fields.push(`${dbCol} = ?`);
+      if (key === 'specs' || key === 'variations' || key === 'useCases' || key === 'images') {
+        args.push(JSON.stringify(value));
+      } else if (key === 'featured') {
+        args.push(value ? 1 : 0);
+      } else {
+        args.push(value);
+      }
     }
   }
+
   if (fields.length === 0) return;
   args.push(slug);
   await db.execute({ sql: `UPDATE products SET ${fields.join(', ')} WHERE slug = ?`, args });
