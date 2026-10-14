@@ -15,23 +15,23 @@ export function SectionHeader({
 }) {
   return (
     <ScrollReveal
-      className={`mb-10 lg:mb-14 ${align === 'center' ? 'text-center' : 'text-start'}`}
+      className={`mb-8 lg:mb-14 ${align === 'center' ? 'text-center' : 'text-start'}`}
     >
       {eyebrow && (
-        <span className="inline-block text-xs font-semibold uppercase tracking-[0.2em] text-olive dark:text-olive/80 mb-3">
+        <span className="inline-block text-xs font-semibold uppercase tracking-[0.2em] text-olive dark:text-olive/80 mb-2 sm:mb-3">
           {eyebrow}
         </span>
       )}
-      <div className={`flex items-center gap-3 mb-4 ${align === 'center' ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-3 mb-3 sm:mb-4 ${align === 'center' ? 'justify-center' : ''}`}>
         <span className="h-px w-8 bg-forest/30 dark:bg-forest-light/30 hidden sm:block" />
-        <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-charcoal dark:text-ivory tracking-tight">
+        <h2 className="text-xl sm:text-3xl lg:text-4xl font-bold text-charcoal dark:text-ivory tracking-tight">
           {title}
         </h2>
         <span className="h-px w-8 bg-forest/30 dark:bg-forest-light/30 hidden sm:block" />
       </div>
       {subtitle && (
         <p
-          className={`text-charcoal/60 dark:text-ivory/60 max-w-2xl leading-relaxed ${
+          className={`text-sm sm:text-base text-charcoal/60 dark:text-ivory/60 max-w-2xl leading-relaxed ${
             align === 'center' ? 'mx-auto' : ''
           }`}
         >

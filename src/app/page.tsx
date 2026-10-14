@@ -166,15 +166,12 @@ export default function HomePage() {
       {/* ═══════════════ FEATURED PRODUCTS ═══════════════ */}
       <section id="featured" className="py-16 lg:py-24 bg-sand-50 dark:bg-charcoal-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10 lg:mb-14">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-8 lg:mb-14">
             <ScrollReveal>
-              <span className="inline-block text-xs font-semibold uppercase tracking-[0.2em] text-olive dark:text-olive/80 mb-3">
-                {t.featuredTitle}
-              </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-charcoal dark:text-ivory tracking-tight mb-2">
+              <h2 className="text-xl sm:text-3xl lg:text-4xl font-bold text-charcoal dark:text-ivory tracking-tight mb-2">
                 {t.featuredTitle}
               </h2>
-              <p className="text-charcoal/60 dark:text-ivory/60">
+              <p className="text-sm sm:base text-charcoal/60 dark:text-ivory/60 max-w-xl">
                 {t.featuredSubtitle}
               </p>
             </ScrollReveal>
@@ -254,14 +251,14 @@ export default function HomePage() {
       </section>
 
       {/* ═══════════════ ABOUT ═══════════════ */}
-      <section id="about" className="py-16 lg:py-24 bg-ivory dark:bg-charcoal">
+      <section id="about" className="py-14 lg:py-24 bg-ivory dark:bg-charcoal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
             <ScrollReveal>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-charcoal dark:text-ivory tracking-tight mb-6">
+              <h2 className="text-xl sm:text-3xl lg:text-4xl font-bold text-charcoal dark:text-ivory tracking-tight mb-4 sm:mb-6">
                 {t.aboutTitle}
               </h2>
-              <p className="text-charcoal/70 dark:text-ivory/70 leading-relaxed mb-6">
+              <p className="text-sm sm:text-base text-charcoal/70 dark:text-ivory/70 leading-relaxed mb-6">
                 {t.aboutText}
               </p>
               <ul className="space-y-3">
@@ -272,7 +269,7 @@ export default function HomePage() {
                         <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     </div>
-                    <span className="text-charcoal/80 dark:text-ivory/80 text-sm">{point}</span>
+                    <span className="text-charcoal/80 dark:text-ivory/80 text-sm sm:text-base">{point}</span>
                   </li>
                 ))}
               </ul>
