@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { contact, whatsappLink, phoneLink } from '@/data/site';
+import { contact } from '@/data/site';
 import { loc } from '@/lib/i18n';
+import { useContacts } from '@/hooks/useContacts';
 import { SectionHeader } from '@/components/SectionHeader';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import {
@@ -19,6 +20,7 @@ type Errors = Partial<Record<'name' | 'phone' | 'email' | 'message', string>>;
 
 export default function ContactPage() {
   const { locale, t } = useApp();
+  const { waLink, phoneLink, number: contactNumber } = useContacts();
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -53,7 +55,7 @@ export default function ContactPage() {
         : `Hello, I'm ${form.name.trim()}.\n${form.message.trim()}\n\nMy phone: ${form.phone.trim()}${
             form.email.trim() ? `\nEmail: ${form.email.trim()}` : ''
           }`;
-    const link = whatsappLink(msg, locale);
+    const link = waLink('contact_page_whatsapp', msg);
 
     // Small delay so the button state is visible before the redirect
     await new Promise((r) => setTimeout(r, 400));
@@ -98,9 +100,10 @@ export default function ContactPage() {
 
                 <div className="space-y-4 mb-8">
                   <a
-                    href={whatsappLink(waMessage, locale)}
+                    href={waLink('contact_page_whatsapp', waMessage)}
                     target="_blank"
                     rel="noopener noreferrer"
+                    data-contact-key="contact_page_whatsapp"
                     className="flex items-center gap-4 p-4 rounded-2xl bg-[#25D366]/10 border border-[#25D366]/20 hover:bg-[#25D366]/15 transition-colors group"
                   >
                     <span className="w-12 h-12 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0">
@@ -117,7 +120,8 @@ export default function ContactPage() {
                   </a>
 
                   <a
-                    href={phoneLink()}
+                    href={phoneLink('contact_page_phone')}
+                    data-contact-key="contact_page_phone"
                     className="flex items-center gap-4 p-4 rounded-2xl bg-forest/10 border border-forest/20 hover:bg-forest/15 transition-colors"
                   >
                     <span className="w-12 h-12 rounded-xl bg-forest text-ivory flex items-center justify-center shrink-0">
@@ -128,7 +132,7 @@ export default function ContactPage() {
                         {t.callUs}
                       </span>
                       <span className="block text-sm text-charcoal/60 dark:text-ivory/60" dir="ltr">
-                        {contact.phoneDisplay}
+                        {contactNumber('contact_page_phone') || contact.phoneDisplay}
                       </span>
                     </span>
                   </a>

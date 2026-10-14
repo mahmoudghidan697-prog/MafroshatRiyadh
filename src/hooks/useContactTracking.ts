@@ -31,10 +31,11 @@ export function useContactTracking() {
       sessionStorage.setItem('ms_track_session', sessionId);
     }
 
-    function send(type: 'whatsapp' | 'phone', contact: string) {
+    function send(type: 'whatsapp' | 'phone', contact: string, contactKey: string | null) {
       const payload = JSON.stringify({
         type,
         contact,
+        contactKey,
         pageUrl: window.location.pathname + window.location.search,
         pageTitle: document.title,
         sessionId,
@@ -62,13 +63,16 @@ export function useContactTracking() {
       const anchor = (e.target as HTMLElement)?.closest?.('a');
       if (!anchor) return;
       const href = anchor.getAttribute('href') || '';
+      // Stable icon identifier so analytics can tell icons apart even when
+      // they share the same number or page. Set via data-contact-key.
+      const contactKey = anchor.getAttribute('data-contact-key');
 
       // WhatsApp: https://wa.me/<number> or api.whatsapp.com
       if (/wa\.me\/\+?\d{6,20}/i.test(href) || /api\.whatsapp\.com\/send/i.test(href)) {
         const m = href.match(/wa\.me\/(\+?\d{6,20})/i) || href.match(/phone=(\+?\d{6,20})/i);
         if (m) {
           e.preventDefault(); // hold navigation just long enough to send
-          send('whatsapp', m[1].replace(/^\+/, ''));
+          send('whatsapp', m[1].replace(/^\+/, ''), contactKey);
           // Open in a new tab (preserve existing target behavior)
           window.open(href, anchor.target || '_blank', 'noopener,noreferrer');
           return;
@@ -82,7 +86,7 @@ export function useContactTracking() {
           const contact = m[1].replace(/[\s()-]/g, '');
           // tel: doesn't navigate the tab, so we DON'T preventDefault —
           // just record and let the dialer open natively.
-          send('phone', contact);
+          send('phone', contact, contactKey);
         }
       }
     }

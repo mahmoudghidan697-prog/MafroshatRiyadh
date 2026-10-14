@@ -21,6 +21,7 @@ interface SiteData {
   services: any[];
   faqs: any[];
   settings: Record<string, string>;
+  contacts: Record<string, { number: string; type: string }>;
   loading: boolean;
   /** true when data came from the live database */
   live: boolean;
@@ -65,6 +66,7 @@ export function useSiteData(): SiteData {
     services: any[];
     faqs: any[];
     settings: Record<string, string>;
+    contacts: Record<string, { number: string; type: string }>;
     live: boolean;
   }>({
     // Show cached data instantly if available (no skeleton flash)
@@ -74,6 +76,7 @@ export function useSiteData(): SiteData {
     services: staticServices as any,
     faqs: staticFaqs as any,
     settings: {},
+    contacts: {},
     live: !!cached,
   });
   const [loading, setLoading] = useState(!cached);
@@ -96,6 +99,7 @@ export function useSiteData(): SiteData {
             services: json.services?.length ? json.services.map((s: any) => s.data) : (staticServices as any),
             faqs: json.faqs?.length ? json.faqs.map((f: any) => f.data) : (staticFaqs as any),
             settings: json.settings ?? {},
+            contacts: json.contacts ?? {},
             live: true,
           });
           // Cache for instant load on next navigation
@@ -111,6 +115,7 @@ export function useSiteData(): SiteData {
             services: staticServices as any,
             faqs: staticFaqs as any,
             settings: {},
+            contacts: {},
             live: false,
           });
         }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProducts, getCategories, getSettings, getApprovedTestimonials, getContentSection } from '@/lib/db';
+import { getProducts, getCategories, getSettings, getApprovedTestimonials, getContentSection, getActiveContactNumbers } from '@/lib/db';
 
 // Public catalog API. The LOGO/settings/testimonials must be LIVE (not
 // cached) — a cached payload is exactly why an admin-approved review or
@@ -12,16 +12,17 @@ export async function GET() {
   try {
     // Run all queries in parallel — sequential awaits were adding
     // ~1.8s of round-trip latency to every public page load.
-    const [products, categories, settings, testimonials, services, faqs] = await Promise.all([
+    const [products, categories, settings, testimonials, services, faqs, contacts] = await Promise.all([
       getProducts(),
       getCategories(),
       getSettings(),
       getApprovedTestimonials(),
       getContentSection('services'),
       getContentSection('faqs'),
+      getActiveContactNumbers(),
     ]);
     return NextResponse.json(
-      { products, categories, settings, testimonials, services, faqs },
+      { products, categories, settings, testimonials, services, faqs, contacts },
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (e: any) {

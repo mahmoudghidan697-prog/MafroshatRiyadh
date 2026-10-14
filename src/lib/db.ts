@@ -72,6 +72,7 @@ async function ensureSchema() {
     CREATE TABLE IF NOT EXISTS contact_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL, contact TEXT NOT NULL,
+      contact_key TEXT,
       page_url TEXT NOT NULL, page_title TEXT,
       session_id TEXT, created_at TEXT NOT NULL
     );
@@ -79,13 +80,60 @@ async function ensureSchema() {
     CREATE INDEX IF NOT EXISTS idx_contact_events_type ON contact_events(type);
     CREATE INDEX IF NOT EXISTS idx_contact_events_contact ON contact_events(contact);
     CREATE INDEX IF NOT EXISTS idx_contact_events_page ON contact_events(page_url);
+    CREATE INDEX IF NOT EXISTS idx_contact_events_key ON contact_events(contact_key);
+    CREATE TABLE IF NOT EXISTS contacts (
+      key TEXT PRIMARY KEY, name_ar TEXT NOT NULL, name_en TEXT NOT NULL,
+      type TEXT NOT NULL, number TEXT NOT NULL,
+      location_ar TEXT NOT NULL, location_en TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_contacts_type ON contacts(type);
+    CREATE INDEX IF NOT EXISTS idx_contacts_active ON contacts(active);
   `);
   schemaReady = true;
+  // Seed the default contact icons if the table is empty
+  await seedContacts();
+}
+
+// ─── Default contact icon definitions (seeded on first run) ───
+// key = stable frontend identifier. The frontend components look up their
+// number by this key; falling back to the site.ts value if missing/inactive.
+const DEFAULT_CONTACTS = [
+  { key: 'header_whatsapp', name_ar: 'واتساب الهيدر', name_en: 'Header WhatsApp', type: 'whatsapp', location_ar: 'شريط الموقع الأعلى', location_en: 'Website Header', fallback: () => staticContact.whatsapp },
+  { key: 'header_phone', name_ar: 'هاتف الهيدر', name_en: 'Header Phone', type: 'phone', location_ar: 'شريط الموقع الأعلى', location_en: 'Website Header', fallback: () => staticContact.phone },
+  { key: 'footer_whatsapp', name_ar: 'واتساب الفوتر', name_en: 'Footer WhatsApp', type: 'whatsapp', location_ar: 'تذييل الموقع', location_en: 'Website Footer', fallback: () => staticContact.whatsapp },
+  { key: 'footer_phone', name_ar: 'هاتف الفوتر', name_en: 'Footer Phone', type: 'phone', location_ar: 'تذييل الموقع', location_en: 'Website Footer', fallback: () => staticContact.phone },
+  { key: 'floating_whatsapp', name_ar: 'واتساب الزر العائم', name_en: 'Floating WhatsApp', type: 'whatsapp', location_ar: 'الزر العائم أسفل الشاشة', location_en: 'Floating contact button', fallback: () => staticContact.whatsapp },
+  { key: 'floating_phone', name_ar: 'هاتف الزر العائم', name_en: 'Floating Phone', type: 'phone', location_ar: 'الزر العائم أسفل الشاشة', location_en: 'Floating contact button', fallback: () => staticContact.phone },
+  { key: 'product_whatsapp', name_ar: 'واتساب بطاقة المنتج', name_en: 'Product Card WhatsApp', type: 'whatsapp', location_ar: 'بطاقات المنتجات', location_en: 'Product cards', fallback: () => staticContact.whatsapp },
+  { key: 'product_phone', name_ar: 'هاتف بطاقة المنتج', name_en: 'Product Card Phone', type: 'phone', location_ar: 'بطاقات المنتجات', location_en: 'Product cards', fallback: () => staticContact.phone },
+  { key: 'product_detail_whatsapp', name_ar: 'واتساب صفحة المنتج', name_en: 'Product Page WhatsApp', type: 'whatsapp', location_ar: 'صفحة تفاصيل المنتج', location_en: 'Product detail page', fallback: () => staticContact.whatsapp },
+  { key: 'product_detail_phone', name_ar: 'هاتف صفحة المنتج', name_en: 'Product Page Phone', type: 'phone', location_ar: 'صفحة تفاصيل المنتج', location_en: 'Product detail page', fallback: () => staticContact.phone },
+  { key: 'contact_page_whatsapp', name_ar: 'واتساب صفحة التواصل', name_en: 'Contact Page WhatsApp', type: 'whatsapp', location_ar: 'صفحة تواصل معنا', location_en: 'Contact page', fallback: () => staticContact.whatsapp },
+  { key: 'contact_page_phone', name_ar: 'هاتف صفحة التواصل', name_en: 'Contact Page Phone', type: 'phone', location_ar: 'صفحة تواصل معنا', location_en: 'Contact page', fallback: () => staticContact.phone },
+  { key: 'home_whatsapp', name_ar: 'واتساب الصفحة الرئيسية', name_en: 'Homepage WhatsApp', type: 'whatsapp', location_ar: 'الصفحة الرئيسية', location_en: 'Homepage', fallback: () => staticContact.whatsapp },
+  { key: 'home_phone', name_ar: 'هاتف الصفحة الرئيسية', name_en: 'Homepage Phone', type: 'phone', location_ar: 'الصفحة الرئيسية', location_en: 'Homepage', fallback: () => staticContact.phone },
+];
+
+async function seedContacts() {
+  const db = getDb();
+  const existing = await db.execute({ sql: 'SELECT COUNT(*) AS n FROM contacts', args: [] });
+  if (Number(existing.rows[0]?.n ?? 0) > 0) return;
+  const now = new Date().toISOString();
+  for (const c of DEFAULT_CONTACTS) {
+    await db.execute({
+      sql: `INSERT INTO contacts (key, name_ar, name_en, type, number, location_ar, location_en, active, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      args: [c.key, c.name_ar, c.name_en, c.type, c.fallback(), c.location_ar, c.location_en, now, now],
+    });
+  }
 }
 
 // ─── Row → App types ───
 
 import type { Product, Category } from '@/data/site';
+import { contact as staticContact } from '@/data/site';
 
 function rowToProduct(r: any): Product {
   return {
@@ -441,6 +489,7 @@ export interface ContactEvent {
   id: number;
   type: 'whatsapp' | 'phone';
   contact: string;
+  contactKey: string | null;
   pageUrl: string;
   pageTitle: string | null;
   sessionId: string | null;
@@ -450,6 +499,7 @@ export interface ContactEvent {
 export async function recordContactEvent(e: {
   type: 'whatsapp' | 'phone';
   contact: string;
+  contactKey?: string;
   pageUrl: string;
   pageTitle?: string;
   sessionId?: string;
@@ -457,10 +507,11 @@ export async function recordContactEvent(e: {
   await ensureSchema();
   const db = getDb();
   await db.execute({
-    sql: 'INSERT INTO contact_events (type, contact, page_url, page_title, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    sql: 'INSERT INTO contact_events (type, contact, contact_key, page_url, page_title, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
     args: [
       e.type,
       e.contact,
+      e.contactKey ?? null,
       e.pageUrl,
       e.pageTitle ?? null,
       e.sessionId ?? null,
@@ -664,4 +715,84 @@ export async function getRecentContactEvents(limit = 50, offset = 0) {
     db.execute({ sql: 'SELECT COUNT(*) AS n FROM contact_events', args: [] }),
   ]);
   return { events: rows.rows.map((r: any) => ({ ...r })), total: Number(countRow.rows[0]?.n ?? 0) };
+}
+
+// ─── Contact icon configurations ───
+
+export interface ContactConfig {
+  key: string;
+  name: { ar: string; en: string };
+  type: 'whatsapp' | 'phone';
+  number: string;
+  location: { ar: string; en: string };
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function rowToContact(r: any): ContactConfig {
+  return {
+    key: String(r.key),
+    name: { ar: r.name_ar, en: r.name_en },
+    type: r.type,
+    number: String(r.number),
+    location: { ar: r.location_ar, en: r.location_en },
+    active: !!r.active,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+/** All contact icon configs (admin view — includes inactive). */
+export async function getAllContacts(): Promise<ContactConfig[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM contacts ORDER BY type, key', args: [] });
+  return rows.rows.map(rowToContact);
+}
+
+/** Active contact configs as a key→number map (public view). */
+export async function getActiveContactNumbers(): Promise<Record<string, { number: string; type: string }>> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT key, type, number FROM contacts WHERE active = 1', args: [] });
+  const map: Record<string, { number: string; type: string }> = {};
+  for (const r of rows.rows) {
+    map[String(r.key)] = { number: String(r.number), type: String(r.type) };
+  }
+  return map;
+}
+
+/** Normalize a phone number: digits only (strip +, spaces, dashes, parens). */
+function normalizeNumber(raw: string): string {
+  return String(raw).replace(/[^\d]/g, '');
+}
+
+/** Update a single contact's number and/or active state (admin). */
+export async function updateContact(
+  key: string,
+  updates: { number?: string; active?: boolean; nameAr?: string; nameEn?: string },
+): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  const fields: string[] = [];
+  const args: any[] = [];
+  if (updates.number !== undefined) {
+    const num = normalizeNumber(updates.number);
+    if (!num || num.length < 6) throw new Error('Invalid phone number');
+    fields.push('number = ?');
+    args.push(num);
+  }
+  if (updates.active !== undefined) {
+    fields.push('active = ?');
+    args.push(updates.active ? 1 : 0);
+  }
+  if (updates.nameAr !== undefined) { fields.push('name_ar = ?'); args.push(updates.nameAr); }
+  if (updates.nameEn !== undefined) { fields.push('name_en = ?'); args.push(updates.nameEn); }
+  if (fields.length === 0) return false;
+  fields.push('updated_at = ?');
+  args.push(new Date().toISOString());
+  args.push(key);
+  await db.execute({ sql: `UPDATE contacts SET ${fields.join(', ')} WHERE key = ?`, args });
+  return true;
 }

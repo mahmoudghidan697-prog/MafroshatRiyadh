@@ -1,13 +1,15 @@
 'use client';
 
 import { useApp } from '@/context/AppContext';
-import { business, contact, categories, whatsappLink, phoneLink } from '@/data/site';
+import { business, contact, categories } from '@/data/site';
 import { loc } from '@/lib/i18n';
 import { useSiteData } from '@/hooks/useSiteData';
+import { useContacts } from '@/hooks/useContacts';
 import { WhatsAppIcon, PhoneIcon, MailIcon, MapPinIcon, ClockIcon } from './Icons';
 
 export function Footer() {
   const { locale, t } = useApp();
+  const { waLink, phoneLink, number: contactNumber } = useContacts();
   // Live logo from the DB (uploaded via admin); falls back to the "م" letter.
   const { settings } = useSiteData();
   const logo = settings.logo || business.logo;
@@ -88,19 +90,21 @@ export function Footer() {
             <ul className="space-y-3 text-sm">
               <li>
                 <a
-                  href={phoneLink()}
+                  href={phoneLink('footer_phone')}
                   className="flex items-center gap-2.5 text-ivory/70 hover:text-ivory transition-colors"
+                  data-contact-key="footer_phone"
                 >
                   <PhoneIcon className="w-4 h-4 shrink-0" />
-                  <span dir="ltr">{contact.phoneDisplay}</span>
+                  <span dir="ltr">{contactNumber('footer_phone') || '—'}</span>
                 </a>
               </li>
               <li>
                 <a
-                  href={whatsappLink(locale === 'ar' ? t.whatsappMessageDefault : t.whatsappMessageDefault, locale)}
+                  href={waLink('footer_whatsapp', locale === 'ar' ? t.whatsappMessageDefault : t.whatsappMessageDefault)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2.5 text-ivory/70 hover:text-ivory transition-colors"
+                  data-contact-key="footer_whatsapp"
                 >
                   <WhatsAppIcon className="w-4 h-4 shrink-0" />
                   {t.whatsappLabel}

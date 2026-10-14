@@ -1,12 +1,13 @@
 'use client';
 
 import { useApp } from '@/context/AppContext';
-import { whatsappLink, phoneLink, business } from '@/data/site';
+import { business } from '@/data/site';
 import { loc } from '@/lib/i18n';
 import { ProductCard } from '@/components/ProductCard';
 import { SectionHeader } from '@/components/SectionHeader';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { useSiteData } from '@/hooks/useSiteData';
+import { useContacts } from '@/hooks/useContacts';
 import { ReviewForm } from '@/components/ReviewForm';
 import {
   WhatsAppIcon,
@@ -22,13 +23,14 @@ import { useState } from 'react';
 
 export default function HomePage() {
   const { locale, t } = useApp();
+  const { waLink, phoneLink } = useContacts();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   // Live catalog data from the DB (falls back to static seed)
   const { products, categories, testimonials: testimonialsFromDb, services, faqs } = useSiteData();
   const featured = products.filter((p) => p.featured);
   const galleryItems = products.slice(0, 6);
-  const waDefault = whatsappLink(t.whatsappMessageDefault, locale);
+  const waDefault = waLink('home_whatsapp', t.whatsappMessageDefault);
 
   const testimonials = [
     {
@@ -104,13 +106,15 @@ export default function HomePage() {
                 href={waDefault}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-contact-key="home_whatsapp"
                 className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 shadow-lg"
               >
                 <WhatsAppIcon className="w-5 h-5" />
                 {t.heroCtaWhatsapp}
               </a>
               <a
-                href={phoneLink()}
+                href={phoneLink('home_phone')}
+                data-contact-key="home_phone"
                 className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl border-2 border-white/30 text-white font-medium hover:border-white hover:bg-white/10 backdrop-blur-sm"
               >
                 <PhoneIcon className="w-5 h-5" />
@@ -380,15 +384,16 @@ export default function HomePage() {
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <a
-                href={whatsappLink(
+                href={waLink(
+                  'home_whatsapp',
                   locale === 'ar'
                     ? 'مرحباً، أرغب في طلب قياس مجاني للمكان'
                     : 'Hello, I would like to request a free measurement',
-                  locale,
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={t.freeMeasureTooltip}
+                data-contact-key="home_whatsapp"
                 className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-ivory text-forest font-semibold hover:bg-ivory/90 shadow-md"
               >
                 <RulerIcon className="w-5 h-5" />
@@ -398,13 +403,15 @@ export default function HomePage() {
                 href={waDefault}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-contact-key="home_whatsapp"
                 className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 shadow-md"
               >
                 <WhatsAppIcon className="w-5 h-5" />
                 {t.whatsappLabel}
               </a>
               <a
-                href={phoneLink()}
+                href={phoneLink('home_phone')}
+                data-contact-key="home_phone"
                 className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-ivory/15 text-ivory font-medium hover:bg-ivory/25"
               >
                 <PhoneIcon className="w-5 h-5" />

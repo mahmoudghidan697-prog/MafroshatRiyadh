@@ -1,14 +1,15 @@
 'use client';
 
 import { useApp } from '@/context/AppContext';
-import { whatsappLink, phoneLink } from '@/data/site';
+import { useContacts } from '@/hooks/useContacts';
 import { WhatsAppIcon, PhoneIcon, CloseIcon } from './Icons';
 import { useState } from 'react';
 
 export function FloatingContact() {
   const { locale, t } = useApp();
+  const { waLink, phoneLink } = useContacts();
   const [expanded, setExpanded] = useState(false);
-  const waDefault = whatsappLink(t.whatsappMessageDefault, locale);
+  const waDefault = waLink('floating_whatsapp', t.whatsappMessageDefault);
 
   return (
     <>
@@ -23,14 +24,16 @@ export function FloatingContact() {
               rel="noopener noreferrer"
               aria-label={t.whatsapp}
               title={t.whatsappTooltip}
+              data-contact-key="floating_whatsapp"
               className="btn-press w-12 h-12 rounded-full bg-[#25D366] text-white shadow-float flex items-center justify-center hover:scale-105"
             >
               <WhatsAppIcon />
             </a>
             <a
-              href={phoneLink()}
+              href={phoneLink('floating_phone')}
               aria-label={t.call}
               title={t.callTooltip}
+              data-contact-key="floating_phone"
               className="btn-press w-12 h-12 rounded-full bg-forest text-ivory shadow-float flex items-center justify-center hover:scale-105"
             >
               <PhoneIcon />
@@ -60,13 +63,15 @@ export function FloatingContact() {
           target="_blank"
           rel="noopener noreferrer"
           className="btn-press flex-1 flex items-center justify-center gap-2 h-14 text-sm font-medium text-white bg-[#25D366]"
+          data-contact-key="floating_whatsapp"
         >
           <WhatsAppIcon className="w-5 h-5" />
           {t.whatsapp}
         </a>
         <a
-          href={phoneLink()}
+          href={phoneLink('floating_phone')}
           className="btn-press flex-1 flex items-center justify-center gap-2 h-14 text-sm font-medium text-ivory bg-forest"
+          data-contact-key="floating_phone"
         >
           <PhoneIcon className="w-5 h-5" />
           {t.call}

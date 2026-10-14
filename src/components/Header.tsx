@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { business, contact, categories, whatsappLink, phoneLink } from '@/data/site';
+import { business, categories } from '@/data/site';
 import { loc } from '@/lib/i18n';
 import { useSiteData } from '@/hooks/useSiteData';
+import { useContacts } from '@/hooks/useContacts';
 import { FavoritesBadge } from './FavoritesBadge';
 import {
   WhatsAppIcon,
@@ -23,6 +24,7 @@ import {
 
 export function Header() {
   const { locale, setLocale, dir, theme, toggleTheme, t } = useApp();
+  const { waLink, phoneLink, number: contactNumber } = useContacts();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
@@ -251,11 +253,12 @@ export function Header() {
 
             {/* WhatsApp — always visible (primary contact) */}
             <a
-              href={whatsappLink(locale === 'ar' ? t.whatsappMessageDefault : t.whatsappMessageDefault, locale)}
+              href={waLink('header_whatsapp', t.whatsappMessageDefault)}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={t.whatsapp}
               title={t.whatsappTooltip}
+              data-contact-key="header_whatsapp"
               className="w-9 h-9 flex items-center justify-center rounded-full bg-[#25D366] text-white hover:brightness-95 transition-all shadow-md shrink-0"
             >
               <WhatsAppIcon className="w-4 h-4" />
@@ -263,13 +266,14 @@ export function Header() {
 
             {/* Contact — desktop only */}
             <a
-              href={phoneLink()}
+              href={phoneLink('header_phone')}
               aria-label={t.call}
               title={t.callTooltip}
+              data-contact-key="header_phone"
               className="hidden xl:flex items-center gap-2 h-9 px-3.5 rounded-full bg-forest text-ivory text-sm font-medium hover:bg-forest-light transition-colors whitespace-nowrap"
             >
               <PhoneIcon className="w-4 h-4 shrink-0" />
-              <span dir="ltr">{contact.phoneDisplay}</span>
+              <span dir="ltr">{contactNumber('header_phone') || '—'}</span>
             </a>
 
             {/* Mobile menu toggle */}
@@ -345,17 +349,19 @@ export function Header() {
             {/* Mobile contact row */}
             <div className="mt-3 pt-3 border-t border-charcoal/10 dark:border-white/10 flex gap-2">
               <a
-                href={whatsappLink(locale === 'ar' ? t.whatsappMessageDefault : t.whatsappMessageDefault, locale)}
+                href={waLink('header_whatsapp', t.whatsappMessageDefault)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-[#25D366] text-white text-sm font-medium"
+                data-contact-key="header_whatsapp"
               >
                 <WhatsAppIcon className="w-4 h-4" />
                 {t.whatsapp}
               </a>
               <a
-                href={phoneLink()}
+                href={phoneLink('header_phone')}
                 className="flex-1 flex items-center justify-center gap-2 h-11 rounded-xl bg-forest text-ivory text-sm font-medium"
+                data-contact-key="header_phone"
               >
                 <PhoneIcon className="w-4 h-4" />
                 {t.call}

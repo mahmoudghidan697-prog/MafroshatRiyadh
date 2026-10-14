@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { getCategory as staticGetCategory, productWhatsappLink, phoneLink } from '@/data/site';
+import { getCategory as staticGetCategory } from '@/data/site';
 import { loc, formatPrice } from '@/lib/i18n';
+import { useContacts } from '@/hooks/useContacts';
 import { ProductCard } from '@/components/ProductCard';
 import { AddProductImagesButton } from '@/components/AddProductImagesButton';
 import { useSiteData } from '@/hooks/useSiteData';
@@ -17,12 +18,20 @@ import {
 
 export default function ProductPage({ params }: { params: { slug: string } }) {
   const { locale, t } = useApp();
+  const { waLink, phoneLink } = useContacts();
   const [activeImage, setActiveImage] = useState(0);
   const [openSpec, setOpenSpec] = useState(true);
 
   // Live catalog data from the DB (falls back to static seed)
   const { products, categories, loading } = useSiteData();
   const product = products.find((p) => p.slug === params.slug);
+
+  // Prefilled WhatsApp message for this product (detail page)
+  const detailName = product ? (locale === 'ar' ? product.name.ar : product.name.en) : '';
+  const detailNameLabel = locale === 'ar' ? 'اسم المنتج' : 'Product';
+  const detailSkuLabel = locale === 'ar' ? 'رمز المنتج' : 'SKU';
+  let detailWaMsg = `${t.whatsappMessageDefault}\n${detailNameLabel}: ${detailName}`;
+  if (product?.sku) detailWaMsg += `\n${detailSkuLabel}: ${product.sku}`;
   const category = categories.find((c) => c.id === product?.category) || staticGetCategory(product?.category || '');
 
   // Still loading and product not found yet — show a loading state
@@ -202,16 +211,18 @@ export default function ProductPage({ params }: { params: { slug: string } }) {
             {/* Contact CTAs */}
             <div className="flex flex-wrap gap-3 mb-8">
               <a
-                href={productWhatsappLink(product, locale)}
+                href={waLink('product_detail_whatsapp', detailWaMsg)}
                 target="_blank"
                 rel="noopener noreferrer"
+                data-contact-key="product_detail_whatsapp"
                 className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 transition-all"
               >
                 <WhatsAppIcon className="w-5 h-5" />
                 {t.inquireWhatsapp}
               </a>
               <a
-                href={phoneLink()}
+                href={phoneLink('product_detail_phone')}
+                data-contact-key="product_detail_phone"
                 className="inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-forest text-ivory font-medium hover:bg-forest-light transition-colors"
               >
                 <PhoneIcon className="w-5 h-5" />

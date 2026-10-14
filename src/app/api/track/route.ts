@@ -77,6 +77,7 @@ export async function POST(req: NextRequest) {
     const pageUrl = sanitizePageUrl(body.pageUrl);
     const pageTitle = sanitizeText(body.pageTitle, 200) || null;
     const sessionId = sanitizeText(body.sessionId, 64) || null;
+    const contactKey = sanitizeText(body.contactKey, 64) || null;
 
     // Determine + validate the contact number based on type
     let contact: string | null = null;
@@ -105,6 +106,7 @@ export async function POST(req: NextRequest) {
     await recordContactEvent({
       type,
       contact,
+      contactKey: contactKey ?? undefined,
       pageUrl,
       pageTitle: pageTitle ?? undefined,
       sessionId: sessionId ?? undefined,
