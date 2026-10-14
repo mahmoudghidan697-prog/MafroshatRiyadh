@@ -64,6 +64,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid filename' }, { status: 400 });
     }
 
+    // ─── Vercel Blob (production, if configured) ───
+    // On Vercel the filesystem is read-only, so uploaded images must go
+    // to Blob storage. The frontend stores whatever path we return here,
+    // so returning the Blob URL makes the image display correctly.
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (blobToken) {
+      try {
+        const { put } = await import('@vercel/blob');
+        // Try public access first; fall back to the store's default
+        // (private) access if the store was created as private.
+        let blob: { url: string };
+        try {
+          blob = await put(`products/${safeName}`, buffer, {
+            access: 'public',
+            token: blobToken,
+            contentType: 'image/jpeg',
+          });
+        } catch {
+          blob = await put(`products/${safeName}`, buffer, {
+            token: blobToken,
+            contentType: 'image/jpeg',
+          });
+        }
+        return NextResponse.json({ ok: true, path: blob.url, size: buffer.length });
+      } catch (blobErr: any) {
+        return NextResponse.json(
+          { error: `Blob upload failed: ${blobErr?.message || 'unknown'}` },
+          { status: 500 },
+        );
+      }
+    }
+
+    // ─── Local filesystem (dev / self-hosted) ───
     // Ensure upload directory exists
     if (!fs.existsSync(UPLOAD_DIR)) {
       await mkdir(UPLOAD_DIR, { recursive: true });
@@ -79,7 +112,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** GET /api/admin/upload — list all available images (defaults + uploaded). */
+/** GET /api/admin/upload — list all available images (defaults + uploaded + blob). */
 export async function GET() {
   try {
     const productsDir = path.join(process.cwd(), 'public', 'images', 'products');
@@ -92,10 +125,24 @@ export async function GET() {
       ? fs.readdirSync(categoriesDir).filter((f) => /\.(jpe?g|png|webp|avif|gif)$/i.test(f)).sort()
       : [];
 
-    return NextResponse.json({
-      products: products.map((f) => `/images/products/${f}`),
-      categories: categories.map((f) => `/images/categories/${f}`),
-    });
+    const productPaths = products.map((f) => `/images/products/${f}`);
+    const categoryPaths = categories.map((f) => `/images/categories/${f}`);
+
+    // Include images stored in Vercel Blob (production uploads)
+    const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+    if (blobToken) {
+      try {
+        const { list } = await import('@vercel/blob');
+        const { blobs } = await list({ prefix: 'products/', token: blobToken });
+        for (const b of blobs) {
+          productPaths.push(b.url);
+        }
+      } catch {
+        // Blob listing failed — return local paths only
+      }
+    }
+
+    return NextResponse.json({ products: productPaths, categories: categoryPaths });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
