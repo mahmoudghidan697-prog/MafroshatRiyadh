@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/admin/Toast';
-import { RiyalIcon } from '@/components/RiyalIcon';
 
 interface Invoice {
   id: number;
@@ -48,9 +47,7 @@ function fmtNum(n: number | null, isAr: boolean): string {
   return isAr ? n.toLocaleString('ar-EG') : n.toLocaleString('en-US');
 }
 function fmtMoney(n: number, isAr: boolean): string {
-  // The Riyal symbol is rendered separately (as an <img>) so it inherits
-  // text size/color; here we return just the number + a space for the icon.
-  return `${fmtNum(n, isAr)}`;
+  return `${fmtNum(n, isAr)} ${isAr ? 'ر.س' : 'SAR'}`;
 }
 
 function statusBadge(status: string, isAr: boolean) {
@@ -169,8 +166,6 @@ export default function AdminInvoices() {
     const merchant = summary.find((s) => s.merchantId === inv.merchantId);
     const w = window.open('', '_blank');
     if (!w) return;
-    // The Riyal symbol as an inline <img> sized to the text
-    const R = '<img src="/images/riyal-symbol.png" alt="" style="height:1em;vertical-align:-0.1em;margin-inline-start:2px">';
     w.document.write(`<!DOCTYPE html><html dir="${isAr ? 'rtl' : 'ltr'}"><head><meta charset="utf-8"><title>${inv.invoiceNumber}</title>
       <style>body{font-family:system-ui,sans-serif;padding:32px;color:#1C1F1E}
       table{width:100%;border-collapse:collapse;margin:16px 0}th,td{border:1px solid #ddd;padding:8px;text-align:start}
@@ -183,14 +178,14 @@ export default function AdminInvoices() {
       <table><thead><tr>
         <th>${isAr ? 'البند' : 'Item'}</th><th>${isAr ? 'الكمية' : 'Qty'}</th><th>${isAr ? 'السعر' : 'Rate'}</th><th>${isAr ? 'المبلغ' : 'Amount'}</th>
       </tr></thead><tbody>
-      <tr><td>${isAr ? 'ضغطات متفق عليها' : 'Agreed clicks'}</td><td>${inv.agreedClicks}</td><td>${inv.agreedRate} ${R}</td><td>${inv.agreedClicks * inv.agreedRate} ${R}</td></tr>
-      ${inv.additionalClicks > 0 ? `<tr><td>${isAr ? 'ضغطات إضافية' : 'Additional clicks'}</td><td>${inv.additionalClicks}</td><td>${inv.additionalRate} ${R}</td><td>${inv.additionalClicks * inv.additionalRate} ${R}</td></tr>` : ''}
-      <tr><td>${isAr ? 'المجموع الفرعي' : 'Subtotal'}</td><td colspan="2"></td><td>${inv.subtotal} ${R}</td></tr>
-      ${inv.taxAmount > 0 ? `<tr><td>${isAr ? 'الضريبة' : 'Tax'} (${inv.taxRate}%)</td><td colspan="2"></td><td>${inv.taxAmount} ${R}</td></tr>` : ''}
+      <tr><td>${isAr ? 'ضغطات متفق عليها' : 'Agreed clicks'}</td><td>${inv.agreedClicks}</td><td>${inv.agreedRate}</td><td>${inv.agreedClicks * inv.agreedRate}</td></tr>
+      ${inv.additionalClicks > 0 ? `<tr><td>${isAr ? 'ضغطات إضافية' : 'Additional clicks'}</td><td>${inv.additionalClicks}</td><td>${inv.additionalRate}</td><td>${inv.additionalClicks * inv.additionalRate}</td></tr>` : ''}
+      <tr><td>${isAr ? 'المجموع الفرعي' : 'Subtotal'}</td><td colspan="2"></td><td>${inv.subtotal}</td></tr>
+      ${inv.taxAmount > 0 ? `<tr><td>${isAr ? 'الضريبة' : 'Tax'} (${inv.taxRate}%)</td><td colspan="2"></td><td>${inv.taxAmount}</td></tr>` : ''}
       </tbody></table>
-      <p class="total">${isAr ? 'الإجمالي' : 'Total'}: ${inv.total} ${R}</p>
-      <p>${isAr ? 'المدفوع' : 'Paid'}: ${inv.amountPaid} ${R} · ${isAr ? 'المتبقي' : 'Balance'}: ${inv.total - inv.amountPaid} ${R}</p>
-      ${inv.payments.length ? `<h4>${isAr ? 'الدفعات' : 'Payments'}</h4><ul>${inv.payments.map((p: any) => `<li>${p.paid_at?.slice(0, 10) ?? ''} — ${p.amount} ${R} ${p.method ? `(${p.method})` : ''}</li>`).join('')}</ul>` : ''}
+      <p class="total">${isAr ? 'الإجمالي' : 'Total'}: ${inv.total} ${isAr ? 'ر.س' : 'SAR'}</p>
+      <p>${isAr ? 'المدفوع' : 'Paid'}: ${inv.amountPaid} · ${isAr ? 'المتبقي' : 'Balance'}: ${inv.total - inv.amountPaid}</p>
+      ${inv.payments.length ? `<h4>${isAr ? 'الدفعات' : 'Payments'}</h4><ul>${inv.payments.map((p: any) => `<li>${p.paid_at?.slice(0, 10) ?? ''} — ${p.amount} ${isAr ? 'ر.س' : 'SAR'} ${p.method ? `(${p.method})` : ''}</li>`).join('')}</ul>` : ''}
       <p class="muted" style="margin-top:24px">${isAr ? 'الضغطة تعني فتح الرابط — ليست تأكيداً بمكالمة أو رسالة.' : 'A click means the link was opened — not a confirmed call or message.'}</p>
       </body></html>`);
     w.document.close();
@@ -212,15 +207,15 @@ export default function AdminInvoices() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <div className="p-4 rounded-2xl bg-ivory dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border">
           <div className="text-[11px] text-charcoal/50 dark:text-ivory/50 mb-1">{isAr ? 'إجمالي الفواتير' : 'Total invoiced'}</div>
-          <div className="text-2xl font-bold text-charcoal dark:text-ivory">{fmtMoney(totalInvoiced, isAr)} <RiyalIcon className="w-5 h-5" /></div>
+          <div className="text-2xl font-bold text-charcoal dark:text-ivory">{fmtMoney(totalInvoiced, isAr)}</div>
         </div>
         <div className="p-4 rounded-2xl bg-ivory dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border">
           <div className="text-[11px] text-charcoal/50 dark:text-ivory/50 mb-1">{isAr ? 'إجمالي المدفوع' : 'Total paid'}</div>
-          <div className="text-2xl font-bold text-[#25D366]">{fmtMoney(totalPaid, isAr)} <RiyalIcon className="w-5 h-5" /></div>
+          <div className="text-2xl font-bold text-[#25D366]">{fmtMoney(totalPaid, isAr)}</div>
         </div>
         <div className="p-4 rounded-2xl bg-ivory dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border">
           <div className="text-[11px] text-charcoal/50 dark:text-ivory/50 mb-1">{isAr ? 'المتبقي' : 'Outstanding'}</div>
-          <div className={`text-2xl font-bold ${totalBalance > 0 ? 'text-red-500' : 'text-charcoal dark:text-ivory'}`}>{fmtMoney(totalBalance, isAr)} <RiyalIcon className="w-5 h-5" /></div>
+          <div className={`text-2xl font-bold ${totalBalance > 0 ? 'text-red-500' : 'text-charcoal dark:text-ivory'}`}>{fmtMoney(totalBalance, isAr)}</div>
         </div>
         <div className="p-4 rounded-2xl bg-ivory dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border">
           <div className="text-[11px] text-charcoal/50 dark:text-ivory/50 mb-1">{isAr ? 'عدد الفواتير' : 'Invoices'}</div>
@@ -257,7 +252,7 @@ export default function AdminInvoices() {
                     <td className="py-2.5 px-2 text-end font-bold text-charcoal dark:text-ivory">{fmtNum(s.totalClicks, isAr)}</td>
                     <td className="py-2.5 px-2 text-end text-charcoal/70 dark:text-ivory/70">{s.agreedLimit != null ? fmtNum(s.agreedLimit, isAr) : '—'}</td>
                     <td className="py-2.5 px-2 text-end text-amber-600">{fmtNum(s.additionalClicks, isAr)}</td>
-                    <td className="py-2.5 px-2 text-end font-medium">{fmtNum(s.balance, isAr)} <RiyalIcon inline /></td>
+                    <td className="py-2.5 px-2 text-end font-medium">{fmtMoney(s.balance, isAr)}</td>
                     <td className="py-2.5 px-2 text-center">
                       {s.limitReached
                         ? <span className="text-red-500 text-xs font-medium">⚠️ {isAr ? 'وصلت للحد' : 'Limit'}</span>
@@ -330,9 +325,9 @@ export default function AdminInvoices() {
                         <td className="py-2.5 px-2 font-medium text-charcoal dark:text-ivory" dir="ltr">{inv.invoiceNumber}</td>
                         <td className="py-2.5 px-2 text-charcoal dark:text-ivory">{merchant?.name ?? '—'}</td>
                         <td className="py-2.5 px-2 text-end text-charcoal/70 dark:text-ivory/70">{fmtNum(inv.totalClicks, isAr)}</td>
-                        <td className="py-2.5 px-2 text-end font-bold text-charcoal dark:text-ivory">{fmtNum(inv.total, isAr)} <RiyalIcon inline /></td>
-                        <td className="py-2.5 px-2 text-end text-[#25D366]">{fmtNum(inv.amountPaid, isAr)} <RiyalIcon inline /></td>
-                        <td className="py-2.5 px-2 text-end font-medium">{balance > 0 ? <span className="text-red-500">{fmtNum(balance, isAr)} <RiyalIcon inline /></span> : <span className="text-charcoal/40">0</span>}</td>
+                        <td className="py-2.5 px-2 text-end font-bold text-charcoal dark:text-ivory">{fmtNum(inv.total, isAr)}</td>
+                        <td className="py-2.5 px-2 text-end text-[#25D366]">{fmtNum(inv.amountPaid, isAr)}</td>
+                        <td className="py-2.5 px-2 text-end font-medium">{balance > 0 ? <span className="text-red-500">{fmtNum(balance, isAr)}</span> : <span className="text-charcoal/40">0</span>}</td>
                         <td className="py-2.5 px-2">{statusBadge(inv.status, isAr)}</td>
                         <td className="py-2.5 px-2">
                           <div className="flex items-center justify-center gap-1">
@@ -373,7 +368,7 @@ export default function AdminInvoices() {
                                   {inv.payments.map((p: any) => (
                                     <div key={p.id} className="flex items-center gap-3 text-xs text-charcoal/70 dark:text-ivory/70">
                                       <span>{p.paid_at?.slice(0, 10)}</span>
-                                      <b>{fmtNum(p.amount, isAr)} <RiyalIcon inline /></b>
+                                      <b>{fmtNum(p.amount, isAr)} {isAr ? 'ر.س' : 'SAR'}</b>
                                       {p.method && <span className="text-charcoal/40">({p.method})</span>}
                                       {p.reference && <span className="text-charcoal/40" dir="ltr">{p.reference}</span>}
                                     </div>
