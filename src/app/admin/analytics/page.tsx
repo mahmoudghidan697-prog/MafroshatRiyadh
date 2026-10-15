@@ -89,8 +89,8 @@ function BarChart({ data, locale }: { data: SeriesPoint[]; locale: string }) {
   );
 }
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// /admin/analytics is a client component — no static export config needed.
+// The API it calls (/api/admin/analytics) is already force-dynamic + no-store.
 
 export default function AdminAnalytics() {
   const { locale } = useApp();
