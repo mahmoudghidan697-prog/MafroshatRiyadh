@@ -53,6 +53,14 @@ function writeCache(products: Product[], categories: Category[]) {
   }
 }
 
+function clearCache() {
+  try {
+    sessionStorage.removeItem(CACHE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * useSiteData — fetches the live catalog from the database-backed
  * API and falls back to the static seed data (src/data/site.ts) if
@@ -85,7 +93,11 @@ export function useSiteData(): SiteData {
 
   // fetch function — defined at component level so refresh() can reuse it
   const loadRef = useRef<() => Promise<void>>(async () => {});
-  const refresh = useCallback(() => { loadRef.current(); }, []);
+  const refresh = useCallback(() => {
+    // Clear the stale sessionStorage cache so the re-fetch gets fresh data
+    clearCache();
+    loadRef.current();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

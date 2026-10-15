@@ -79,6 +79,8 @@ export function ContactEditBadge({
       if (res.ok) {
         toast(isAr ? 'تم حفظ الرقم' : 'Number saved');
         setOpen(false);
+        // Clear the stale sessionStorage cache so the refresh gets fresh data
+        try { sessionStorage.removeItem('ms_site_data_v1'); } catch { /* ignore */ }
         onSaved?.();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -106,9 +108,9 @@ export function ContactEditBadge({
         </svg>
       </button>
 
-      {/* Inline edit popup */}
+      {/* Inline edit popup — fixed on mobile, absolute on desktop */}
       {open && (
-        <div className="absolute top-full mt-2 end-0 z-50 w-60 p-3 rounded-xl bg-ivory dark:bg-charcoal-light border border-charcoal/10 dark:border-charcoal-border shadow-float scale-in origin-top">
+        <div className="fixed sm:absolute inset-x-4 top-1/2 -translate-y-1/2 sm:inset-x-auto sm:top-full sm:mt-2 sm:end-0 sm:translate-y-0 z-[60] w-auto sm:w-64 p-4 rounded-xl bg-ivory dark:bg-charcoal-light border border-charcoal/10 dark:border-charcoal-border shadow-float scale-in origin-top">
           <label className="block text-xs font-medium text-charcoal/60 dark:text-ivory/60 mb-1.5">
             {isAr ? 'رقم الأيقونة دي' : 'This icon\'s number'}
           </label>
@@ -119,26 +121,26 @@ export function ContactEditBadge({
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } }}
             dir="ltr"
             placeholder="9665xxxxxxx"
-            className="w-full h-9 px-3 mb-2 rounded-lg bg-sand-100 dark:bg-charcoal border border-charcoal/10 dark:border-charcoal-border text-sm"
+            className="w-full h-10 px-3 mb-3 rounded-lg bg-sand-100 dark:bg-charcoal border border-charcoal/10 dark:border-charcoal-border text-sm"
           />
           <div className="flex gap-2">
             <button
               onClick={save}
               disabled={saving}
-              className="flex-1 h-9 rounded-lg bg-forest text-ivory text-sm font-medium hover:bg-forest-light disabled:opacity-50"
+              className="flex-1 h-10 rounded-lg bg-forest text-ivory text-sm font-medium hover:bg-forest-light disabled:opacity-50"
             >
               {saving ? '...' : isAr ? 'حفظ' : 'Save'}
             </button>
             <button
               onClick={() => setOpen(false)}
-              className="h-9 px-3 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm"
+              className="h-10 px-4 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm"
             >
               {isAr ? 'إلغاء' : 'Cancel'}
             </button>
           </div>
           <p className="mt-2 text-[11px] text-charcoal/40 dark:text-ivory/40 leading-snug">
             {isAr
-              ? 'الأرقام المستقلة: تغيير الرقم ده مايأثرش على أي أيقونة تانية.'
+              ? 'الأرقام مستقلة: تغيير الرقم ده مايأثرش على أي أيقونة تانية.'
               : 'Independent: changing this number affects only this icon.'}
           </p>
         </div>

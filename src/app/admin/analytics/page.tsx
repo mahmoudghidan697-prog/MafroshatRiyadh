@@ -89,6 +89,9 @@ function BarChart({ data, locale }: { data: SeriesPoint[]; locale: string }) {
   );
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function AdminAnalytics() {
   const { locale } = useApp();
   const isAr = locale === 'ar';
