@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/admin/Toast';
+import { RiyalIcon } from '@/components/RiyalIcon';
 import { WhatsAppIcon, PhoneIcon } from '@/components/Icons';
 
 // ─── Types ───
@@ -156,7 +157,7 @@ function AgreementForm({ merchant, onDone }: { merchant: Merchant; onDone: () =>
           <input type="number" min="1" value={agreedClicks} onChange={(e) => setAgreedClicks(e.target.value)} placeholder="10" className="w-full h-9 px-3 rounded-lg bg-ivory dark:bg-charcoal-light border border-charcoal/10 dark:border-charcoal-border text-sm" />
         </div>
         <div>
-          <label className="block text-xs text-charcoal/60 dark:text-ivory/60 mb-1">{isAr ? 'سعر الضغطة (ر.س)' : 'Rate per click (SAR)'}</label>
+          <label className="block text-xs text-charcoal/60 dark:text-ivory/60 mb-1 inline-flex items-center gap-1">{isAr ? 'سعر الضغطة' : 'Rate per click'} <RiyalIcon inline /></label>
           <input type="number" min="1" value={ratePerClick} onChange={(e) => setRatePerClick(e.target.value)} placeholder="5" className="w-full h-9 px-3 rounded-lg bg-ivory dark:bg-charcoal-light border border-charcoal/10 dark:border-charcoal-border text-sm" />
         </div>
         <div>
@@ -181,7 +182,7 @@ function AgreementForm({ merchant, onDone }: { merchant: Merchant; onDone: () =>
       {agreedClicks && ratePerClick && (
         <div className="text-xs text-charcoal/50 dark:text-ivory/50">
           {isAr ? `القيمة المتفق عليها: ` : 'Agreed value: '}
-          <b className="text-charcoal dark:text-ivory">{fmtNum(Number(agreedClicks) * Number(ratePerClick), isAr)} {isAr ? 'ر.س' : 'SAR'}</b>
+          <b className="text-charcoal dark:text-ivory inline-flex items-center gap-1">{fmtNum(Number(agreedClicks) * Number(ratePerClick), isAr)} <RiyalIcon inline /></b>
         </div>
       )}
     </div>
@@ -254,7 +255,10 @@ function AgreementCard({ agreement, isAr, onChanged }: { agreement: Agreement; i
           <div className="text-xs text-charcoal/50 dark:text-ivory/50 mt-1">
             {isAr ? `تبدأ: ${agreement.startDate}` : `Starts: ${agreement.startDate}`}
             {agreement.endDate ? ` · ${isAr ? 'تنتهي' : 'Ends'}: ${agreement.endDate}` : ''}
-            {` · ${isAr ? 'سعر الضغطة' : 'Rate'}: ${fmtNum(agreement.ratePerClick, isAr)} ${isAr ? 'ر.س' : 'SAR'}`}
+            {` · ${isAr ? 'سعر الضغطة' : 'Rate'}: `}
+            <span className="inline-flex items-center gap-0.5">
+              {fmtNum(agreement.ratePerClick, isAr)} <RiyalIcon inline />
+            </span>
           </div>
         </div>
       </div>
