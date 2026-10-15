@@ -97,6 +97,8 @@ async function ensureSchema() {
   await seedContacts();
   // Safe migration: add contact_key to contact_events if missing (older DBs)
   await migrateContactEventsKey();
+  // Safe migration: merchant/agreement/billing tables + columns
+  await migrateMerchantSchema();
 }
 
 // Safe migrations that run every time (not gated by schemaReady) so new
@@ -121,6 +123,105 @@ async function migrateContactEventsKey() {
     if (!has) {
       await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN contact_key TEXT', args: [] });
     }
+  } catch {
+    // Ignore — best effort
+  }
+}
+
+// ─── Merchant / agreements / billing schema (runs every time) ───
+async function migrateMerchantSchema() {
+  try {
+    const db = getDb();
+    await db.executeMultiple(`
+      CREATE TABLE IF NOT EXISTS merchants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT, whatsapp TEXT,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS agreements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        merchant_id INTEGER NOT NULL,
+        name TEXT,
+        start_date TEXT NOT NULL,
+        end_date TEXT,
+        agreed_clicks INTEGER NOT NULL,
+        rate_per_click INTEGER NOT NULL,
+        additional_rate INTEGER,
+        status TEXT NOT NULL DEFAULT 'active',
+        notes TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_agreements_merchant ON agreements(merchant_id);
+      CREATE TABLE IF NOT EXISTS invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_number TEXT UNIQUE NOT NULL,
+        merchant_id INTEGER NOT NULL,
+        agreement_id INTEGER NOT NULL,
+        issue_date TEXT NOT NULL,
+        period_from TEXT, period_to TEXT,
+        agreed_clicks INTEGER NOT NULL DEFAULT 0,
+        agreed_rate INTEGER NOT NULL DEFAULT 0,
+        additional_clicks INTEGER NOT NULL DEFAULT 0,
+        additional_rate INTEGER NOT NULL DEFAULT 0,
+        total_clicks INTEGER NOT NULL DEFAULT 0,
+        subtotal INTEGER NOT NULL DEFAULT 0,
+        tax_rate INTEGER NOT NULL DEFAULT 0,
+        tax_amount INTEGER NOT NULL DEFAULT 0,
+        total INTEGER NOT NULL DEFAULT 0,
+        amount_paid INTEGER NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'draft',
+        notes TEXT,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_invoices_merchant ON invoices(merchant_id);
+      CREATE TABLE IF NOT EXISTS payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        invoice_id INTEGER NOT NULL,
+        amount INTEGER NOT NULL,
+        method TEXT,
+        reference TEXT,
+        notes TEXT,
+        paid_at TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_payments_invoice ON payments(invoice_id);
+      CREATE TABLE IF NOT EXISTS notifications (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        merchant_id INTEGER,
+        agreement_id INTEGER,
+        title TEXT NOT NULL,
+        message TEXT,
+        read INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
+    `);
+    // Add merchant_id to products (safe — only if missing)
+    const info = await db.execute({ sql: 'PRAGMA table_info(products)', args: [] });
+    const has = info.rows.some((r: any) => r.name === 'merchant_id');
+    if (!has) {
+      await db.execute({ sql: 'ALTER TABLE products ADD COLUMN merchant_id INTEGER', args: [] });
+    }
+    // Add attribution columns to contact_events (safe — only if missing)
+    const evInfo = await db.execute({ sql: 'PRAGMA table_info(contact_events)', args: [] });
+    if (!evInfo.rows.some((r: any) => r.name === 'product_slug')) {
+      await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN product_slug TEXT', args: [] });
+    }
+    if (!evInfo.rows.some((r: any) => r.name === 'merchant_id')) {
+      await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN merchant_id INTEGER', args: [] });
+    }
+    if (!evInfo.rows.some((r: any) => r.name === 'agreement_id')) {
+      await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN agreement_id INTEGER', args: [] });
+    }
+    await db.executeMultiple(`
+      CREATE INDEX IF NOT EXISTS idx_contact_events_product ON contact_events(product_slug);
+      CREATE INDEX IF NOT EXISTS idx_contact_events_merchant ON contact_events(merchant_id);
+      CREATE INDEX IF NOT EXISTS idx_contact_events_agreement ON contact_events(agreement_id);
+    `);
   } catch {
     // Ignore — best effort
   }
@@ -179,6 +280,7 @@ function rowToProduct(r: any): Product {
     useCases: JSON.parse(r.use_cases ?? '[]'),
     published: !!r.published,
     seoTitle: r.seo_title ?? undefined, seoDescription: r.seo_description ?? undefined,
+    merchantId: r.merchant_id != null ? Number(r.merchant_id) : undefined,
   };
 }
 
@@ -532,11 +634,45 @@ export async function recordContactEvent(e: {
   pageUrl: string;
   pageTitle?: string;
   sessionId?: string;
+  productSlug?: string;
 }): Promise<void> {
   await ensureSchema();
   const db = getDb();
+
+  // ─── Attribute the click to a product → merchant → active agreement ───
+  let merchantId: number | null = null;
+  let agreementId: number | null = null;
+  let productSlug: string | null = e.productSlug ?? null;
+
+  // If the caller didn't pass a product slug, try to infer it from the
+  // page URL (product pages are /products/<slug>).
+  if (!productSlug && e.pageUrl) {
+    const m = e.pageUrl.match(/\/products\/([a-z0-9-]+)/i);
+    if (m) productSlug = m[1];
+  }
+
+  if (productSlug) {
+    const prod = await db.execute({ sql: 'SELECT merchant_id FROM products WHERE slug = ?', args: [productSlug] });
+    const mid = prod.rows[0]?.merchant_id;
+    if (mid != null) {
+      merchantId = Number(mid);
+      // Find the active agreement for this merchant (most recent start).
+      // Every click is attributed to the CURRENT active agreement so that
+      // historical agreements and their invoices never change.
+      const ag = await db.execute({
+        sql: `SELECT id FROM agreements
+          WHERE merchant_id = ? AND status = 'active'
+          ORDER BY start_date DESC, id DESC LIMIT 1`,
+        args: [merchantId],
+      });
+      if (ag.rows[0]?.id != null) agreementId = Number(ag.rows[0].id);
+    }
+  }
+
   await db.execute({
-    sql: 'INSERT INTO contact_events (type, contact, contact_key, page_url, page_title, session_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    sql: `INSERT INTO contact_events
+      (type, contact, contact_key, page_url, page_title, session_id, product_slug, merchant_id, agreement_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       e.type,
       e.contact,
@@ -544,6 +680,61 @@ export async function recordContactEvent(e: {
       e.pageUrl,
       e.pageTitle ?? null,
       e.sessionId ?? null,
+      productSlug,
+      merchantId,
+      agreementId,
+      new Date().toISOString(),
+    ],
+  });
+
+  // ─── Threshold notification: fire ONCE when an agreement is first reached ───
+  // NEVER stops tracking or disables buttons — the click above is already saved.
+  if (agreementId != null) {
+    await checkAgreementThreshold(agreementId);
+  }
+}
+
+/**
+ * Check whether an agreement has just reached its agreed click limit and,
+ * if so, record ONE dashboard notification. Idempotent: it never creates a
+ * second notification for the same agreement (the click count only grows).
+ */
+async function checkAgreementThreshold(agreementId: number): Promise<void> {
+  const db = getDb();
+  // Total billable clicks attributed to this agreement
+  const counted = await db.execute({
+    sql: 'SELECT COUNT(*) AS n FROM contact_events WHERE agreement_id = ?',
+    args: [agreementId],
+  });
+  const total = Number(counted.rows[0]?.n ?? 0);
+
+  const ag = await db.execute({
+    sql: 'SELECT id, merchant_id, agreed_clicks, status FROM agreements WHERE id = ?',
+    args: [agreementId],
+  });
+  const row = ag.rows[0] as any;
+  if (!row) return;
+  const agreed = Number(row.agreed_clicks);
+  if (total < agreed) return; // not reached yet
+
+  // Already notified? → do nothing (no duplicate notification)
+  const existing = await db.execute({
+    sql: 'SELECT id FROM notifications WHERE agreement_id = ? AND type = ? LIMIT 1',
+    args: [agreementId, 'threshold'],
+  });
+  if (existing.rows.length > 0) return;
+
+  const merchant = await db.execute({ sql: 'SELECT name FROM merchants WHERE id = ?', args: [row.merchant_id] });
+  const merchantName = String(merchant.rows[0]?.name ?? '—');
+
+  await db.execute({
+    sql: 'INSERT INTO notifications (type, merchant_id, agreement_id, title, message, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    args: [
+      'threshold',
+      row.merchant_id,
+      agreementId,
+      `اتفاقية ${merchantName} وصلت للحد المتفق عليه`,
+      `الضغطات المتفق عليها: ${agreed} · الضغطات الفعلية: ${total} · الإضافية: ${Math.max(0, total - agreed)}. التتبع مستمر — راجع الاتفاقية في لوحة التحكم.`,
       new Date().toISOString(),
     ],
   });
@@ -885,5 +1076,505 @@ export async function updateContact(
   args.push(new Date().toISOString());
   args.push(key);
   await db.execute({ sql: `UPDATE contacts SET ${fields.join(', ')} WHERE key = ?`, args });
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  MERCHANTS · AGREEMENTS · BILLING
+// ═══════════════════════════════════════════════════════════════
+
+export interface Merchant {
+  id: number;
+  name: string;
+  phone: string | null;
+  whatsapp: string | null;
+  notes: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function rowToMerchant(r: any): Merchant {
+  return {
+    id: Number(r.id),
+    name: String(r.name),
+    phone: r.phone ? String(r.phone) : null,
+    whatsapp: r.whatsapp ? String(r.whatsapp) : null,
+    notes: r.notes ? String(r.notes) : null,
+    status: String(r.status),
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+/** All merchants (admin view). */
+export async function getAllMerchants(): Promise<Merchant[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM merchants ORDER BY created_at DESC', args: [] });
+  return rows.rows.map(rowToMerchant);
+}
+
+/** Single merchant by id. */
+export async function getMerchant(id: number): Promise<Merchant | null> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM merchants WHERE id = ?', args: [id] });
+  return rows.rows[0] ? rowToMerchant(rows.rows[0]) : null;
+}
+
+/** Create a merchant. */
+export async function createMerchant(m: { name: string; phone?: string; whatsapp?: string; notes?: string; status?: string }): Promise<number> {
+  await ensureSchema();
+  const db = getDb();
+  const now = new Date().toISOString();
+  const res = await db.execute({
+    sql: 'INSERT INTO merchants (name, phone, whatsapp, notes, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    args: [m.name, m.phone ?? null, m.whatsapp ?? null, m.notes ?? null, m.status ?? 'active', now, now],
+  });
+  return Number(res.lastInsertRowid);
+}
+
+/** Update a merchant. */
+export async function updateMerchant(id: number, updates: Partial<{ name: string; phone: string; whatsapp: string; notes: string; status: string }>): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  const fields: string[] = [];
+  const args: any[] = [];
+  for (const [k, col] of [['name', 'name'], ['phone', 'phone'], ['whatsapp', 'whatsapp'], ['notes', 'notes'], ['status', 'status']] as const) {
+    if (updates[k] !== undefined) { fields.push(`${col} = ?`); args.push(updates[k]); }
+  }
+  if (fields.length === 0) return false;
+  fields.push('updated_at = ?');
+  args.push(new Date().toISOString());
+  args.push(id);
+  await db.execute({ sql: `UPDATE merchants SET ${fields.join(', ')} WHERE id = ?`, args });
+  return true;
+}
+
+/** Archive (soft-delete) or delete a merchant. Products are unassigned, never deleted. */
+export async function archiveMerchant(id: number): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  const now = new Date().toISOString();
+  await db.execute({ sql: "UPDATE merchants SET status = 'archived', updated_at = ? WHERE id = ?", args: [now, id] });
+  // Unassign its products so nothing is orphaned to an archived merchant
+  await db.execute({ sql: 'UPDATE products SET merchant_id = NULL WHERE merchant_id = ?', args: [id] });
+  return true;
+}
+
+/** Products assigned to a merchant. */
+export async function getMerchantProducts(merchantId: number): Promise<{ slug: string; nameAr: string; nameEn: string }[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({
+    sql: 'SELECT slug, name_ar, name_en FROM products WHERE merchant_id = ? ORDER BY slug',
+    args: [merchantId],
+  });
+  return rows.rows.map((r: any) => ({ slug: String(r.slug), nameAr: String(r.name_ar), nameEn: String(r.name_en) }));
+}
+
+/** Assign a product to a merchant (or unassign with null). */
+export async function assignProductMerchant(slug: string, merchantId: number | null): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  const res = await db.execute({ sql: 'UPDATE products SET merchant_id = ? WHERE slug = ?', args: [merchantId, slug] });
+  return res.rowsAffected > 0;
+}
+
+export interface Agreement {
+  id: number;
+  merchantId: number;
+  name: string | null;
+  startDate: string;
+  endDate: string | null;
+  agreedClicks: number;
+  ratePerClick: number;
+  additionalRate: number | null;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function rowToAgreement(r: any): Agreement {
+  return {
+    id: Number(r.id),
+    merchantId: Number(r.merchant_id),
+    name: r.name ? String(r.name) : null,
+    startDate: String(r.start_date),
+    endDate: r.end_date ? String(r.end_date) : null,
+    agreedClicks: Number(r.agreed_clicks),
+    ratePerClick: Number(r.rate_per_click),
+    additionalRate: r.additional_rate != null ? Number(r.additional_rate) : null,
+    status: String(r.status),
+    notes: r.notes ? String(r.notes) : null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+/** All agreements for a merchant (newest first). */
+export async function getAgreements(merchantId: number): Promise<Agreement[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM agreements WHERE merchant_id = ? ORDER BY start_date DESC, id DESC', args: [merchantId] });
+  return rows.rows.map(rowToAgreement);
+}
+
+/** Single agreement by id. */
+export async function getAgreement(id: number): Promise<Agreement | null> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM agreements WHERE id = ?', args: [id] });
+  return rows.rows[0] ? rowToAgreement(rows.rows[0]) : null;
+}
+
+/** Create an agreement. */
+export async function createAgreement(a: {
+  merchantId: number;
+  name?: string;
+  startDate: string;
+  endDate?: string | null;
+  agreedClicks: number;
+  ratePerClick: number;
+  additionalRate?: number | null;
+  notes?: string;
+}): Promise<number> {
+  await ensureSchema();
+  const db = getDb();
+  const now = new Date().toISOString();
+  const res = await db.execute({
+    sql: `INSERT INTO agreements
+      (merchant_id, name, start_date, end_date, agreed_clicks, rate_per_click, additional_rate, status, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`,
+    args: [a.merchantId, a.name ?? null, a.startDate, a.endDate ?? null, a.agreedClicks, a.ratePerClick, a.additionalRate ?? null, a.notes ?? null, now, now],
+  });
+  return Number(res.lastInsertRowid);
+}
+
+/**
+ * Extend an agreement by adding more agreed clicks (and optionally a new
+ * rate for the extension). Records the change in the notes history.
+ * NEVER touches historical invoices — only this agreement's terms.
+ */
+export async function extendAgreement(id: number, extraClicks: number, newRate?: number | null): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  const now = new Date().toISOString();
+  const ag = await getAgreement(id);
+  if (!ag) return false;
+  const history = `${ag.notes ?? ''}\n[${now}] تمديد: +${extraClicks} ضغطة${newRate != null ? ` · سعر جديد ${newRate} ر.س` : ''}`.trim();
+  const nextRate = newRate != null ? newRate : ag.ratePerClick;
+  await db.execute({
+    sql: 'UPDATE agreements SET agreed_clicks = agreed_clicks + ?, rate_per_click = ?, notes = ?, updated_at = ? WHERE id = ?',
+    args: [extraClicks, nextRate, history, now, id],
+  });
+  return true;
+}
+
+/** Close an agreement (keeps all history + clicks intact). */
+export async function closeAgreement(id: number): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  const now = new Date().toISOString();
+  const ag = await getAgreement(id);
+  if (!ag) return false;
+  const history = `${ag.notes ?? ''}\n[${now}] تم إغلاق الاتفاقية`.trim();
+  await db.execute({ sql: "UPDATE agreements SET status = 'closed', notes = ?, updated_at = ? WHERE id = ?", args: [history, now, id] });
+  return true;
+}
+
+/**
+ * Per-agreement billing breakdown (server-side truth):
+ * agreed clicks, additional clicks (pending review / approved for billing),
+ * and the calculated amounts. Pending additional clicks are NEVER priced
+ * unless an additional_rate was agreed.
+ */
+export async function getAgreementBilling(agreementId: number): Promise<{
+  agreedClicks: number;
+  totalClicks: number;
+  additionalClicks: number;
+  agreedAmount: number;
+  additionalAmount: number | null; // null = no rate agreed → needs review
+  totalAmount: number | null;
+  pendingReview: boolean;
+}> {
+  await ensureSchema();
+  const db = getDb();
+  const ag = await getAgreement(agreementId);
+  if (!ag) throw new Error('Agreement not found');
+
+  const counted = await db.execute({
+    sql: 'SELECT COUNT(*) AS n FROM contact_events WHERE agreement_id = ?',
+    args: [agreementId],
+  });
+  const total = Number(counted.rows[0]?.n ?? 0);
+  const agreed = Math.min(total, ag.agreedClicks);
+  const additional = Math.max(0, total - ag.agreedClicks);
+
+  const agreedAmount = agreed * ag.ratePerClick;
+
+  if (additional === 0) {
+    return { agreedClicks: agreed, totalClicks: total, additionalClicks: 0, agreedAmount, additionalAmount: 0, totalAmount: agreedAmount, pendingReview: false };
+  }
+
+  if (ag.additionalRate != null) {
+    const additionalAmount = additional * ag.additionalRate;
+    return {
+      agreedClicks: agreed, totalClicks: total, additionalClicks: additional,
+      agreedAmount, additionalAmount, totalAmount: agreedAmount + additionalAmount, pendingReview: false,
+    };
+  }
+
+  // No additional rate agreed → extra clicks recorded but flagged for review,
+  // with NO invented price.
+  return {
+    agreedClicks: agreed, totalClicks: total, additionalClicks: additional,
+    agreedAmount, additionalAmount: null, totalAmount: null, pendingReview: true,
+  };
+}
+
+/** Click counts + financials per merchant (merchant comparison table). */
+export async function getMerchantBillingSummary(): Promise<any[]> {
+  await ensureSchema();
+  const db = getDb();
+  const merchants = await getAllMerchants();
+  const out: any[] = [];
+  for (const m of merchants) {
+    const products = await getMerchantProducts(m.id);
+    const slugs = products.map((p) => p.slug);
+    // Click totals for this merchant (all-time, attributed server-side)
+    const clickRows = await db.execute({
+      sql: `SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN type='whatsapp' THEN 1 ELSE 0 END) AS whatsapp,
+        SUM(CASE WHEN type='phone' THEN 1 ELSE 0 END) AS phone
+      FROM contact_events WHERE merchant_id = ?`,
+      args: [m.id],
+    });
+    const c = clickRows.rows[0] as any;
+    // Financial rollup from invoices + payments
+    const invRows = await db.execute({
+      sql: `SELECT COALESCE(SUM(total),0) AS invoiced, COALESCE(SUM(amount_paid),0) AS paid FROM invoices WHERE merchant_id = ?`,
+      args: [m.id],
+    });
+    const inv = invRows.rows[0] as any;
+    // Active agreement limit
+    const agRows = await db.execute({
+      sql: `SELECT agreed_clicks FROM agreements WHERE merchant_id = ? AND status = 'active' ORDER BY start_date DESC, id DESC LIMIT 1`,
+      args: [m.id],
+    });
+    const limit = agRows.rows[0] ? Number(agRows.rows[0].agreed_clicks) : null;
+    const total = Number(c?.total ?? 0);
+    out.push({
+      merchantId: m.id,
+      name: m.name,
+      productCount: slugs.length,
+      whatsappClicks: Number(c?.whatsapp ?? 0),
+      phoneClicks: Number(c?.phone ?? 0),
+      totalClicks: total,
+      agreedLimit: limit,
+      remainingClicks: limit != null ? Math.max(0, limit - total) : null,
+      additionalClicks: limit != null ? Math.max(0, total - limit) : 0,
+      invoiced: Number(inv?.invoiced ?? 0),
+      paid: Number(inv?.paid ?? 0),
+      balance: Number(inv?.invoiced ?? 0) - Number(inv?.paid ?? 0),
+      limitReached: limit != null && total >= limit,
+    });
+  }
+  return out;
+}
+
+// ─── Invoices & payments ───
+
+export interface Invoice {
+  id: number;
+  invoiceNumber: string;
+  merchantId: number;
+  agreementId: number;
+  issueDate: string;
+  periodFrom: string | null;
+  periodTo: string | null;
+  agreedClicks: number;
+  agreedRate: number;
+  additionalClicks: number;
+  additionalRate: number;
+  totalClicks: number;
+  subtotal: number;
+  taxRate: number;
+  taxAmount: number;
+  total: number;
+  amountPaid: number;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+function rowToInvoice(r: any): Invoice {
+  return {
+    id: Number(r.id),
+    invoiceNumber: String(r.invoice_number),
+    merchantId: Number(r.merchant_id),
+    agreementId: Number(r.agreement_id),
+    issueDate: String(r.issue_date),
+    periodFrom: r.period_from ? String(r.period_from) : null,
+    periodTo: r.period_to ? String(r.period_to) : null,
+    agreedClicks: Number(r.agreed_clicks),
+    agreedRate: Number(r.agreed_rate),
+    additionalClicks: Number(r.additional_clicks),
+    additionalRate: Number(r.additional_rate),
+    totalClicks: Number(r.total_clicks),
+    subtotal: Number(r.subtotal),
+    taxRate: Number(r.tax_rate),
+    taxAmount: Number(r.tax_amount),
+    total: Number(r.total),
+    amountPaid: Number(r.amount_paid),
+    status: String(r.status),
+    notes: r.notes ? String(r.notes) : null,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  };
+}
+
+/** Generate a unique invoice number: INV-YYYYMMDD-<seq>. */
+async function nextInvoiceNumber(db: any): Promise<string> {
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const rows = await db.execute({
+    sql: `SELECT COUNT(*) AS n FROM invoices WHERE invoice_number LIKE ?`,
+    args: [`INV-${today}-%`],
+  });
+  const seq = (Number(rows.rows[0]?.n ?? 0) + 1).toString().padStart(3, '0');
+  return `INV-${today}-${seq}`;
+}
+
+/**
+ * Create an invoice from an agreement's CURRENT billing state.
+ * The invoice freezes the values at issue time — later agreement changes
+ * never modify an issued invoice (historical integrity).
+ */
+export async function createInvoice(input: {
+  merchantId: number;
+  agreementId: number;
+  issueDate?: string;
+  periodFrom?: string | null;
+  periodTo?: string | null;
+  agreedClicks: number;
+  agreedRate: number;
+  additionalClicks: number;
+  additionalRate: number;
+  taxRate?: number;
+  notes?: string;
+}): Promise<number> {
+  await ensureSchema();
+  const db = getDb();
+  const now = new Date().toISOString();
+  const invoiceNumber = await nextInvoiceNumber(db);
+  const totalClicks = input.agreedClicks + input.additionalClicks;
+  const subtotal = input.agreedClicks * input.agreedRate + input.additionalClicks * input.additionalRate;
+  const taxRate = input.taxRate ?? 0;
+  const taxAmount = Math.round((subtotal * taxRate) / 100);
+  const total = subtotal + taxAmount;
+  const res = await db.execute({
+    sql: `INSERT INTO invoices
+      (invoice_number, merchant_id, agreement_id, issue_date, period_from, period_to,
+       agreed_clicks, agreed_rate, additional_clicks, additional_rate, total_clicks,
+       subtotal, tax_rate, tax_amount, total, amount_paid, status, notes, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 'issued', ?, ?, ?)`,
+    args: [
+      invoiceNumber, input.merchantId, input.agreementId,
+      input.issueDate ?? now.slice(0, 10),
+      input.periodFrom ?? null, input.periodTo ?? null,
+      input.agreedClicks, input.agreedRate, input.additionalClicks, input.additionalRate, totalClicks,
+      subtotal, taxRate, taxAmount, total, input.notes ?? null, now, now,
+    ],
+  });
+  return Number(res.lastInsertRowid);
+}
+
+/** All invoices (optionally filtered by merchant). */
+export async function getInvoices(merchantId?: number): Promise<Invoice[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = merchantId != null
+    ? await db.execute({ sql: 'SELECT * FROM invoices WHERE merchant_id = ? ORDER BY created_at DESC', args: [merchantId] })
+    : await db.execute({ sql: 'SELECT * FROM invoices ORDER BY created_at DESC', args: [] });
+  return rows.rows.map(rowToInvoice);
+}
+
+/** Single invoice by id. */
+export async function getInvoice(id: number): Promise<Invoice | null> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM invoices WHERE id = ?', args: [id] });
+  return rows.rows[0] ? rowToInvoice(rows.rows[0]) : null;
+}
+
+/**
+ * Record a payment against an invoice. Updates amount_paid + status
+ * (issued → partially_paid → paid) atomically. Never deletes the invoice.
+ */
+export async function recordPayment(p: { invoiceId: number; amount: number; method?: string; reference?: string; notes?: string; paidAt?: string }): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  const inv = await getInvoice(p.invoiceId);
+  if (!inv) return false;
+  if (!Number.isFinite(p.amount) || p.amount <= 0) return false;
+
+  const now = new Date().toISOString();
+  await db.execute({
+    sql: 'INSERT INTO payments (invoice_id, amount, method, reference, notes, paid_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    args: [p.invoiceId, p.amount, p.method ?? null, p.reference ?? null, p.notes ?? null, p.paidAt ?? now, now],
+  });
+
+  const newPaid = inv.amountPaid + p.amount;
+  const status = newPaid >= inv.total ? 'paid' : 'partially_paid';
+  await db.execute({
+    sql: "UPDATE invoices SET amount_paid = ?, status = ?, updated_at = ? WHERE id = ?",
+    args: [newPaid, status, now, p.invoiceId],
+  });
+  return true;
+}
+
+/** Payments for an invoice (newest first). */
+export async function getPayments(invoiceId: number): Promise<any[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM payments WHERE invoice_id = ? ORDER BY created_at DESC', args: [invoiceId] });
+  return rows.rows.map((r: any) => ({ ...r }));
+}
+
+// ─── Notifications ───
+
+/** Unread notification count (for the dashboard badge). */
+export async function getUnreadNotificationCount(): Promise<number> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT COUNT(*) AS n FROM notifications WHERE read = 0', args: [] });
+  return Number(rows.rows[0]?.n ?? 0);
+}
+
+/** All notifications (newest first, capped). */
+export async function getNotifications(limit = 50): Promise<any[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.execute({ sql: 'SELECT * FROM notifications ORDER BY created_at DESC LIMIT ?', args: [limit] });
+  return rows.rows.map((r: any) => ({ ...r }));
+}
+
+/** Mark a notification read. */
+export async function markNotificationRead(id: number): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  await db.execute({ sql: 'UPDATE notifications SET read = 1 WHERE id = ?', args: [id] });
+  return true;
+}
+
+/** Mark all notifications read. */
+export async function markAllNotificationsRead(): Promise<boolean> {
+  await ensureSchema();
+  const db = getDb();
+  await db.execute({ sql: 'UPDATE notifications SET read = 1 WHERE read = 0', args: [] });
   return true;
 }

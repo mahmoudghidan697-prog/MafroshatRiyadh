@@ -78,6 +78,11 @@ export async function POST(req: NextRequest) {
     const pageTitle = sanitizeText(body.pageTitle, 200) || null;
     const sessionId = sanitizeText(body.sessionId, 64) || null;
     const contactKey = sanitizeText(body.contactKey, 64) || null;
+    // Product attribution — the server re-derives merchant/agreement from
+    // this slug; it is NOT a billing value the client can trust. Validated
+    // as a slug shape only.
+    const productSlugRaw = sanitizeText(body.productSlug, 100);
+    const productSlug = /^[a-z0-9-]+$/i.test(productSlugRaw) ? productSlugRaw : null;
 
     // Determine + validate the contact number based on type
     let contact: string | null = null;
@@ -110,6 +115,7 @@ export async function POST(req: NextRequest) {
       pageUrl,
       pageTitle: pageTitle ?? undefined,
       sessionId: sessionId ?? undefined,
+      productSlug: productSlug ?? undefined,
     });
 
     // Fire-and-forget: always return fast so the link opens without delay

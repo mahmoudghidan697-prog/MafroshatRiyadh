@@ -32,10 +32,16 @@ export function useContactTracking() {
     }
 
     function send(type: 'whatsapp' | 'phone', contact: string, contactKey: string | null) {
+      // Attribute the click to the product page it happened on, so the
+      // server can bill the correct merchant. /products/<slug> pages carry
+      // the slug in the URL; everywhere else productSlug stays null.
+      const pm = window.location.pathname.match(/\/products\/([a-z0-9-]+)/i);
+      const productSlug = pm ? pm[1] : null;
       const payload = JSON.stringify({
         type,
         contact,
         contactKey,
+        productSlug,
         pageUrl: window.location.pathname + window.location.search,
         pageTitle: document.title,
         sessionId,

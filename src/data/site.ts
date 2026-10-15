@@ -117,6 +117,8 @@ export interface Product {
   seoDescription?: string;
   // Publication state — admin controls this; DB-backed
   published?: boolean;
+  // Merchant that owns this product's contact clicks (billing attribution)
+  merchantId?: number;
 }
 
 export interface Category {

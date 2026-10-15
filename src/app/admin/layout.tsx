@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
@@ -23,9 +23,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: '/admin', label: 'لوحة التحكم', icon: '📊', labelEn: 'Dashboard' },
+    { href: '/admin/merchants', label: 'التُجّار والاتفاقيات', icon: '🤝', labelEn: 'Merchants' },
     { href: '/admin/products', label: 'المنتجات', icon: '📦', labelEn: 'Products' },
     { href: '/admin/categories', label: 'الأقسام', icon: '📂', labelEn: 'Categories' },
     { href: '/admin/analytics', label: 'تحليلات التواصل', icon: '📈', labelEn: 'Contact Analytics' },
+    { href: '/admin/invoices', label: 'الفواتير', icon: '🧾', labelEn: 'Invoices' },
     { href: '/admin/contacts', label: 'أيقونات التواصل', icon: '📞', labelEn: 'Contact Icons' },
     { href: '/admin/content', label: 'محتوى الموقع', icon: '📝', labelEn: 'Site Content' },
     { href: '/admin/media', label: 'معرض الصور', icon: '🖼️', labelEn: 'Media' },
@@ -39,6 +41,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push('/admin/login');
     router.refresh();
   }
+
+  // Notification badge (unread threshold alerts)
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => fetch('/api/admin/notifications')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!cancelled && j) setUnread(j.unread ?? 0); })
+      .catch(() => {});
+    poll();
+    const t = setInterval(poll, 60_000); // refresh every minute
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
 
   return (
     <ToastProvider>
@@ -56,10 +71,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </Link>
         </div>
-
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => {
             const active = pathname === item.href;
+            const showBadge = item.href === '/admin/merchants' && unread > 0;
             return (
               <Link
                 key={item.href}
@@ -71,7 +86,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 }`}
               >
                 <span className="text-base">{item.icon}</span>
-                {locale === 'ar' ? item.label : item.labelEn}
+                <span className="flex-1">{locale === 'ar' ? item.label : item.labelEn}</span>
+                {showBadge && (
+                  <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                    {unread}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -108,6 +128,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </button>
 
           <div className="flex items-center gap-2 ms-auto">
+            <Link
+              href="/admin/merchants"
+              className="relative btn-press h-9 px-3 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm font-medium hover:border-forest dark:hover:border-forest-light transition-colors flex items-center gap-1.5"
+              title={locale === 'ar' ? 'الإشعارات' : 'Notifications'}
+            >
+              <span>🔔</span>
+              {unread > 0 && (
+                <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                  {unread}
+                </span>
+              )}
+            </Link>
             <button
               onClick={() => setLocale(locale === 'ar' ? 'en' : 'ar')}
               className="btn-press h-9 px-3 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm font-medium hover:border-forest dark:hover:border-forest-light transition-colors"
