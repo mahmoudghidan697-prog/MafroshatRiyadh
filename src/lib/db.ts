@@ -1560,7 +1560,16 @@ export async function getNotifications(limit = 50): Promise<any[]> {
   await ensureSchema();
   const db = getDb();
   const rows = await db.execute({ sql: 'SELECT * FROM notifications ORDER BY created_at DESC LIMIT ?', args: [limit] });
-  return rows.rows.map((r: any) => ({ ...r }));
+  return rows.rows.map((r: any) => ({
+    id: Number(r.id),
+    type: String(r.type),
+    merchantId: r.merchant_id != null ? Number(r.merchant_id) : null,
+    agreementId: r.agreement_id != null ? Number(r.agreement_id) : null,
+    title: String(r.title),
+    message: r.message ? String(r.message) : null,
+    read: Number(r.read),
+    createdAt: String(r.created_at),
+  }));
 }
 
 /** Mark a notification read. */
