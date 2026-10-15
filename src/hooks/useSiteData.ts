@@ -32,7 +32,14 @@ interface SiteData {
 const CACHE_KEY = 'ms_site_data_v1';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-function readCache(): { products: Product[]; categories: Category[]; ts: number } | null {
+interface CachePayload {
+  products: Product[];
+  categories: Category[];
+  contacts: Record<string, { number: string; type: string }>;
+  ts: number;
+}
+
+function readCache(): CachePayload | null {
   try {
     const raw = sessionStorage.getItem(CACHE_KEY);
     if (!raw) return null;
@@ -45,9 +52,9 @@ function readCache(): { products: Product[]; categories: Category[]; ts: number 
   }
 }
 
-function writeCache(products: Product[], categories: Category[]) {
+function writeCache(products: Product[], categories: Category[], contacts: Record<string, { number: string; type: string }>) {
   try {
-    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ products, categories, ts: Date.now() }));
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ products, categories, contacts, ts: Date.now() }));
   } catch {
     // storage full or unavailable — ignore
   }
@@ -86,10 +93,15 @@ export function useSiteData(): SiteData {
     services: staticServices as any,
     faqs: staticFaqs as any,
     settings: {},
-    contacts: {},
-    live: !!cached,
+    // Use cached contacts if available — but if the cache has no contacts
+    // (older cache format), start empty so useContacts doesn't fall back
+    // to the static placeholder number during the fetch.
+    contacts: cached?.contacts ?? {},
+    live: !!cached && !!cached?.contacts,
   });
-  const [loading, setLoading] = useState(!cached);
+  // If we have cached products but NO cached contacts, keep loading=true
+  // until the fetch delivers contacts — prevents the placeholder flash.
+  const [loading, setLoading] = useState(!cached || !cached?.contacts);
 
   // fetch function — defined at component level so refresh() can reuse it
   const loadRef = useRef<() => Promise<void>>(async () => {});
@@ -110,6 +122,7 @@ export function useSiteData(): SiteData {
         if (cancelled) return;
         // Only use DB data if it actually has products
         if (json.products && json.products.length > 0) {
+          const freshContacts = json.contacts ?? {};
           setData({
             products: json.products,
             categories: json.categories?.length ? json.categories : staticCategories,
@@ -117,11 +130,11 @@ export function useSiteData(): SiteData {
             services: json.services?.length ? json.services.map((s: any) => s.data) : (staticServices as any),
             faqs: json.faqs?.length ? json.faqs.map((f: any) => f.data) : (staticFaqs as any),
             settings: json.settings ?? {},
-            contacts: json.contacts ?? {},
+            contacts: freshContacts,
             live: true,
           });
-          // Cache for instant load on next navigation
-          writeCache(json.products, json.categories?.length ? json.categories : staticCategories);
+          // Cache for instant load on next navigation (includes contacts!)
+          writeCache(json.products, json.categories?.length ? json.categories : staticCategories, freshContacts);
         }
       } catch {
         // Network/DB error — fall back to cache, then static seed
