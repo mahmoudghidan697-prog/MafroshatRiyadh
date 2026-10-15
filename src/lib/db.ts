@@ -550,7 +550,7 @@ export async function recordContactEvent(e: {
 }
 
 /** Date range helper — returns [fromISO, toISO) bounds for a preset. */
-function rangeBounds(range: string, from?: string, to?: string): { from: string; to: string } {
+export function rangeBounds(range: string, from?: string, to?: string): { from: string; to: string } {
   const now = new Date();
   const endOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999).toISOString();
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).toISOString();
@@ -578,13 +578,25 @@ function rangeBounds(range: string, from?: string, to?: string): { from: string;
   }
 }
 
+/** Bounds of the period immediately BEFORE the current one (same length). */
+function previousPeriodBounds(range: string, from?: string, to?: string): { from: string; to: string } {
+  const b = rangeBounds(range, from, to);
+  const startMs = new Date(b.from).getTime();
+  const endMs = new Date(b.to).getTime();
+  const len = endMs - startMs + 1; // inclusive length in ms
+  return { from: new Date(startMs - len).toISOString(), to: new Date(startMs - 1).toISOString() };
+}
+
 /** Overview counters for the analytics dashboard (server-side aggregation). */
 export async function getContactStats(range = '30d', from?: string, to?: string) {
   await ensureSchema();
   const db = getDb();
   const b = rangeBounds(range, from, to);
 
-  const [totals, uniqueContacts, mostClicked, mostEngagedPage] = await Promise.all([
+  // Previous equivalent period for period-over-period comparison
+  const prev = previousPeriodBounds(range, from, to);
+
+  const [totals, uniqueContacts, mostClicked, mostEngagedPage, prevTotals, prevUnique] = await Promise.all([
     db.execute({
       sql: `SELECT
         COUNT(*) AS total,
@@ -605,9 +617,28 @@ export async function getContactStats(range = '30d', from?: string, to?: string)
       sql: 'SELECT page_url, COUNT(*) AS clicks FROM contact_events WHERE created_at BETWEEN ? AND ? GROUP BY page_url ORDER BY clicks DESC LIMIT 1',
       args: [b.from, b.to],
     }),
+    db.execute({
+      sql: `SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN type='whatsapp' THEN 1 ELSE 0 END) AS whatsapp,
+        SUM(CASE WHEN type='phone' THEN 1 ELSE 0 END) AS phone
+      FROM contact_events WHERE created_at BETWEEN ? AND ?`,
+      args: [prev.from, prev.to],
+    }),
+    db.execute({
+      sql: 'SELECT COUNT(DISTINCT contact) AS n FROM contact_events WHERE created_at BETWEEN ? AND ?',
+      args: [prev.from, prev.to],
+    }),
   ]);
 
   const t = totals.rows[0] as any;
+  const pt = prevTotals.rows[0] as any;
+
+  const pct = (curr: number, prevN: number): number | null => {
+    if (!prevN) return null; // no baseline → can't compute a meaningful %
+    return Math.round(((curr - prevN) / prevN) * 100);
+  };
+
   return {
     total: Number(t?.total ?? 0),
     whatsapp: Number(t?.whatsapp ?? 0),
@@ -617,6 +648,17 @@ export async function getContactStats(range = '30d', from?: string, to?: string)
     mostEngagedPage: mostEngagedPage.rows[0] ? { url: String(mostEngagedPage.rows[0].page_url), clicks: Number(mostEngagedPage.rows[0].clicks) } : null,
     from: b.from,
     to: b.to,
+    // Previous equivalent period — null when there's no baseline to compare against
+    prev: {
+      total: Number(pt?.total ?? 0),
+      whatsapp: Number(pt?.whatsapp ?? 0),
+      phone: Number(pt?.phone ?? 0),
+      uniqueContacts: Number(prevUnique.rows[0]?.n ?? 0),
+      totalPct: pct(Number(t?.total ?? 0), Number(pt?.total ?? 0)),
+      whatsappPct: pct(Number(t?.whatsapp ?? 0), Number(pt?.whatsapp ?? 0)),
+      phonePct: pct(Number(t?.phone ?? 0), Number(pt?.phone ?? 0)),
+      uniqueContactsPct: pct(Number(uniqueContacts.rows[0]?.n ?? 0), Number(prevUnique.rows[0]?.n ?? 0)),
+    },
   };
 }
 
@@ -642,6 +684,7 @@ export async function getContactByNumber(range = '30d', from?: string, to?: stri
       SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) AS yesterday,
       SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS last7,
       SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS last30,
+      MIN(created_at) AS first_clicked,
       MAX(created_at) AS last_clicked
     FROM contact_events
     WHERE created_at BETWEEN ? AND ?
@@ -649,6 +692,20 @@ export async function getContactByNumber(range = '30d', from?: string, to?: stri
     ORDER BY total DESC`,
     args: [todayStart, yesterdayStart, yesterdayEnd, d7Start, d30Start, b.from, b.to],
   });
+
+  // All-time totals (ignoring the selected range) — one row per contact+type
+  const allTimeRows = await db.execute({
+    sql: `SELECT contact, type, COUNT(*) AS all_time, MIN(created_at) AS first_clicked
+      FROM contact_events GROUP BY contact, type`,
+    args: [],
+  });
+  const allTimeMap: Record<string, number> = {};
+  const firstClickMap: Record<string, string> = {};
+  for (const r of allTimeRows.rows) {
+    const k = String(r.contact) + '|' + String(r.type);
+    allTimeMap[k] = Number(r.all_time);
+    firstClickMap[k] = r.first_clicked ? String(r.first_clicked) : '';
+  }
 
   // Pages per contact
   const pageRows = await db.execute({
@@ -661,17 +718,22 @@ export async function getContactByNumber(range = '30d', from?: string, to?: stri
     (pagesByContact[c] ||= []).push({ url: String(r.page_url), clicks: Number(r.n) });
   }
 
-  return rows.rows.map((r: any) => ({
-    contact: String(r.contact),
-    type: String(r.type),
-    total: Number(r.total),
-    today: Number(r.today),
-    yesterday: Number(r.yesterday),
-    last7: Number(r.last7),
-    last30: Number(r.last30),
-    lastClicked: r.last_clicked ? String(r.last_clicked) : null,
-    pages: (pagesByContact[String(r.contact)] ?? []).sort((a, c) => c.clicks - a.clicks),
-  }));
+  return rows.rows.map((r: any) => {
+    const k = String(r.contact) + '|' + String(r.type);
+    return {
+      contact: String(r.contact),
+      type: String(r.type),
+      total: Number(r.total),
+      today: Number(r.today),
+      yesterday: Number(r.yesterday),
+      last7: Number(r.last7),
+      last30: Number(r.last30),
+      allTime: allTimeMap[k] ?? Number(r.total),
+      firstClicked: r.first_clicked ? String(r.first_clicked) : (firstClickMap[k] || null),
+      lastClicked: r.last_clicked ? String(r.last_clicked) : null,
+      pages: (pagesByContact[String(r.contact)] ?? []).sort((a, c) => c.clicks - a.clicks),
+    };
+  });
 }
 
 /** Per-page analytics. */
