@@ -120,7 +120,7 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
                 </div>
                 {/* Thumbnails */}
                 {primaryProduct.images.length > 1 && (
-                  <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
+                  <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide max-w-full">
                     {primaryProduct.images.map((img, i) => (
                       <button
                         key={i}
