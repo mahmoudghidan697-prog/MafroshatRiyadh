@@ -4,6 +4,13 @@ import {
   getContactByNumber,
   getContactByPage,
   getContactTimeSeries,
+  getTrafficSummary,
+  getTopPages,
+  getDeviceStats,
+  getTrafficSources,
+  getTrafficSeries,
+  getLandingPages,
+  getPageTraffic,
 } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';

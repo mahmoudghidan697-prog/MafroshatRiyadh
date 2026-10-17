@@ -97,14 +97,50 @@ export function Header() {
     setSearchResults(results);
   }, [searchQuery]);
 
-  // Nav links use absolute paths so they work from ANY page
-  // (plain #anchors only resolve on the homepage)
+  // Nav links — new structure with category dropdowns
   const navLinks = [
     { href: '/', label: t.navHome },
     { href: '/catalog', label: t.navCatalog },
     { href: '/about', label: t.navAbout },
     { href: '/contact', label: t.navContact },
   ];
+
+  // Category dropdown groups
+  const carpetCats = categories.filter(c => ['carpets-rugs', 'moquette', 'carpet-tiles', 'mosque-carpets', 'office-commercial', 'runners-stairs'].includes(c.id));
+  const flooringCats = categories.filter(c => ['vinyl-flooring', 'parquet-spc', 'rubber-flooring'].includes(c.id));
+  const outdoorCats = categories.filter(c => ['artificial-grass'].includes(c.id));
+
+  const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
+
+  function Dropdown({ id, label, items }: { id: string; label: string; items: typeof categories }) {
+    const open = dropdownOpen === id;
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setDropdownOpen(open ? null : id)}
+          className={`hdr-nav-link ${navCls} flex items-center gap-1`}
+          aria-expanded={open}
+        >
+          {label}
+          <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <div className="absolute top-full mt-1 w-56 rounded-xl bg-ivory dark:bg-charcoal-light border border-charcoal/10 dark:border-charcoal-border shadow-float overflow-hidden z-50 scale-in origin-top">
+            {items.map((c) => (
+              <a
+                key={c.id}
+                href={`/${c.id}`}
+                onClick={() => setDropdownOpen(null)}
+                className="block px-4 py-2.5 text-sm hover:bg-sand-100 dark:hover:bg-charcoal-elevated transition-colors"
+              >
+                {loc(locale, c.name)}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Text tone flips with the surface: over the transparent dark hero the
   // header always uses light text (regardless of theme) because the hero
@@ -174,11 +210,14 @@ export function Header() {
 
           {/* Desktop nav */}
           <nav className="hidden lg:flex items-center gap-1" aria-label={t.navProducts}>
-            {navLinks.map((link) => (
-              <a key={link.href} href={link.href} className={`hdr-nav-link ${navCls}`}>
-                {link.label}
-              </a>
-            ))}
+            <a href="/" className={`hdr-nav-link ${navCls}`}>{t.navHome}</a>
+            <a href="/catalog" className={`hdr-nav-link ${navCls}`}>{t.navCatalog}</a>
+            <Dropdown id="carpets" label={locale === 'ar' ? 'السجاد والموكيت' : 'Carpets & Moquette'} items={carpetCats} />
+            <Dropdown id="flooring" label={locale === 'ar' ? 'الأرضيات' : 'Flooring'} items={flooringCats} />
+            <a href="/artificial-grass" className={`hdr-nav-link ${navCls}`}>{locale === 'ar' ? 'عشب صناعي' : 'Artificial Grass'}</a>
+            <a href="/solutions" className={`hdr-nav-link ${navCls}`}>{locale === 'ar' ? 'حلول الشركات' : 'Solutions'}</a>
+            <a href="/about" className={`hdr-nav-link ${navCls}`}>{t.navAbout}</a>
+            <a href="/contact" className={`hdr-nav-link ${navCls}`}>{t.navContact}</a>
           </nav>
 
           {/* Right cluster */}
@@ -210,7 +249,7 @@ export function Header() {
                   {searchResults.map((r) => (
                     <a
                       key={r.slug}
-                      href={`/catalog?category=${r.slug}`}
+                      href={`/${r.slug}`}
                       onClick={() => {
                         setSearchFocused(false);
                         setSearchQuery('');
@@ -337,6 +376,49 @@ export function Header() {
                 <ArrowRightIcon className="w-3.5 h-3.5 flip-rtl text-charcoal/30 dark:text-ivory/30" />
               </a>
             ))}
+            {/* Mobile category groups */}
+            <div className="px-3 py-2 text-xs font-semibold text-charcoal/50 dark:text-ivory/50">
+              {locale === 'ar' ? 'السجاد والموكيت' : 'Carpets & Moquette'}
+            </div>
+            {carpetCats.map((c) => (
+              <a
+                key={c.id}
+                href={`/${c.id}`}
+                onClick={() => setMobileOpen(false)}
+                className="ps-6 pe-3 py-2 rounded-lg text-sm hover:bg-sand-100 dark:hover:bg-charcoal-light"
+              >
+                {loc(locale, c.name)}
+              </a>
+            ))}
+            <div className="px-3 py-2 text-xs font-semibold text-charcoal/50 dark:text-ivory/50">
+              {locale === 'ar' ? 'الأرضيات' : 'Flooring'}
+            </div>
+            {flooringCats.map((c) => (
+              <a
+                key={c.id}
+                href={`/${c.id}`}
+                onClick={() => setMobileOpen(false)}
+                className="ps-6 pe-3 py-2 rounded-lg text-sm hover:bg-sand-100 dark:hover:bg-charcoal-light"
+              >
+                {loc(locale, c.name)}
+              </a>
+            ))}
+            <a
+              href="/artificial-grass"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-sand-100 dark:hover:bg-charcoal-light flex items-center justify-between gap-2"
+            >
+              {locale === 'ar' ? 'عشب صناعي' : 'Artificial Grass'}
+              <ArrowRightIcon className="w-3.5 h-3.5 flip-rtl text-charcoal/30 dark:text-ivory/30" />
+            </a>
+            <a
+              href="/solutions"
+              onClick={() => setMobileOpen(false)}
+              className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-sand-100 dark:hover:bg-charcoal-light flex items-center justify-between gap-2"
+            >
+              {locale === 'ar' ? 'حلول الشركات والمشروعات' : 'Commercial Solutions'}
+              <ArrowRightIcon className="w-3.5 h-3.5 flip-rtl text-charcoal/30 dark:text-ivory/30" />
+            </a>
 
             {/* Favorites link */}
             <a

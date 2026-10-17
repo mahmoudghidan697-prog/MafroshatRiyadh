@@ -99,6 +99,8 @@ async function ensureSchema() {
   await migrateContactEventsKey();
   // Safe migration: merchant/agreement/billing tables + columns
   await migrateMerchantSchema();
+  // Safe migration: website traffic analytics table
+  await migrateAnalyticsSchema();
 }
 
 // Safe migrations that run every time (not gated by schemaReady) so new
@@ -221,6 +223,37 @@ async function migrateMerchantSchema() {
       CREATE INDEX IF NOT EXISTS idx_contact_events_product ON contact_events(product_slug);
       CREATE INDEX IF NOT EXISTS idx_contact_events_merchant ON contact_events(merchant_id);
       CREATE INDEX IF NOT EXISTS idx_contact_events_agreement ON contact_events(agreement_id);
+    `);
+  } catch {
+    // Ignore — best effort
+  }
+}
+
+// ─── Website traffic analytics schema (runs every time) ───
+async function migrateAnalyticsSchema() {
+  try {
+    const db = getDb();
+    await db.executeMultiple(`
+      CREATE TABLE IF NOT EXISTS page_views (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        visitor_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        page_url TEXT NOT NULL,
+        page_title TEXT,
+        device_type TEXT NOT NULL DEFAULT 'unknown',
+        referrer TEXT,
+        utm_source TEXT,
+        utm_medium TEXT,
+        utm_campaign TEXT,
+        is_new_session INTEGER NOT NULL DEFAULT 0,
+        duration_seconds INTEGER,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_page_views_visitor ON page_views(visitor_id);
+      CREATE INDEX IF NOT EXISTS idx_page_views_session ON page_views(session_id);
+      CREATE INDEX IF NOT EXISTS idx_page_views_created ON page_views(created_at);
+      CREATE INDEX IF NOT EXISTS idx_page_views_url ON page_views(page_url);
+      CREATE INDEX IF NOT EXISTS idx_page_views_device ON page_views(device_type);
     `);
   } catch {
     // Ignore — best effort
@@ -1586,4 +1619,274 @@ export async function markAllNotificationsRead(): Promise<boolean> {
   const db = getDb();
   await db.execute({ sql: 'UPDATE notifications SET read = 1 WHERE read = 0', args: [] });
   return true;
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+//  WEBSITE TRAFFIC ANALYTICS
+// ═══════════════════════════════════════════════════════════════
+
+/** Record a page view. */
+export async function recordPageView(v: {
+  visitorId: string;
+  sessionId: string;
+  pageUrl: string;
+  pageTitle?: string;
+  deviceType: 'mobile' | 'desktop' | 'tablet' | 'unknown';
+  referrer?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  isNewSession: boolean;
+  durationSeconds?: number;
+}): Promise<void> {
+  await ensureSchema();
+  const db = getDb();
+  await db.execute({
+    sql: `INSERT INTO page_views
+      (visitor_id, session_id, page_url, page_title, device_type, referrer, utm_source, utm_medium, utm_campaign, is_new_session, duration_seconds, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      v.visitorId, v.sessionId, v.pageUrl, v.pageTitle ?? null, v.deviceType,
+      v.referrer ?? null, v.utmSource ?? null, v.utmMedium ?? null, v.utmCampaign ?? null,
+      v.isNewSession ? 1 : 0, v.durationSeconds ?? null, new Date().toISOString(),
+    ],
+  });
+}
+
+export interface AnalyticsSummary {
+  uniqueVisitors: number;
+  totalSessions: number;
+  totalPageViews: number;
+  mobileVisitors: number;
+  desktopVisitors: number;
+  tabletVisitors: number;
+  unknownVisitors: number;
+  avgPagesPerSession: number;
+  avgSessionDuration: number;
+}
+
+export interface TopPage {
+  page_url: string;
+  page_title: string | null;
+  page_views: number;
+  unique_visitors: number;
+  sessions: number;
+}
+
+export interface DeviceStat {
+  device_type: string;
+  visitors: number;
+  sessions: number;
+  page_views: number;
+  pct: number;
+}
+
+export interface SourceStat {
+  source: string;
+  visitors: number;
+  sessions: number;
+  page_views: number;
+}
+
+export interface TrafficSeriesPoint {
+  date: string;
+  visitors: number;
+  sessions: number;
+  page_views: number;
+}
+
+/** Aggregated traffic summary for the dashboard. */
+export async function getTrafficSummary(range = '30d', from?: string, to?: string): Promise<AnalyticsSummary> {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+
+  const [totals, devices, sess] = await Promise.all([
+    db.execute({
+      sql: `SELECT
+        COUNT(DISTINCT visitor_id) AS unique_visitors,
+        COUNT(DISTINCT session_id) AS total_sessions,
+        COUNT(*) AS total_page_views
+      FROM page_views WHERE created_at BETWEEN ? AND ?`,
+      args: [b.from, b.to],
+    }),
+    db.execute({
+      sql: `SELECT device_type, COUNT(DISTINCT visitor_id) AS visitors
+      FROM page_views WHERE created_at BETWEEN ? AND ? GROUP BY device_type`,
+      args: [b.from, b.to],
+    }),
+    db.execute({
+      sql: `SELECT AVG(cnt) AS avg_pages, AVG(COALESCE(dur, 0)) AS avg_duration
+      FROM (
+        SELECT session_id, COUNT(*) AS cnt, AVG(COALESCE(duration_seconds, 0)) AS dur
+        FROM page_views WHERE created_at BETWEEN ? AND ?
+        GROUP BY session_id
+      )`,
+      args: [b.from, b.to],
+    }),
+  ]);
+
+  const t = totals.rows[0] as any;
+  const s = sess.rows[0] as any;
+  const devMap: Record<string, number> = {};
+  for (const r of devices.rows) devMap[String(r.device_type)] = Number(r.visitors);
+
+  return {
+    uniqueVisitors: Number(t?.unique_visitors ?? 0),
+    totalSessions: Number(t?.total_sessions ?? 0),
+    totalPageViews: Number(t?.total_page_views ?? 0),
+    mobileVisitors: devMap['mobile'] ?? 0,
+    desktopVisitors: devMap['desktop'] ?? 0,
+    tabletVisitors: devMap['tablet'] ?? 0,
+    unknownVisitors: devMap['unknown'] ?? 0,
+    avgPagesPerSession: Math.round((Number(s?.avg_pages ?? 0) + Number.EPSILON) * 10) / 10,
+    avgSessionDuration: Math.round(Number(s?.avg_duration ?? 0)),
+  };
+}
+
+/** Top pages report. */
+export async function getTopPages(range = '30d', from?: string, to?: string, limit = 20): Promise<TopPage[]> {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+  const rows = await db.execute({
+    sql: `SELECT page_url, MAX(page_title) AS page_title,
+      COUNT(*) AS page_views,
+      COUNT(DISTINCT visitor_id) AS unique_visitors,
+      COUNT(DISTINCT session_id) AS sessions
+    FROM page_views WHERE created_at BETWEEN ? AND ?
+    GROUP BY page_url ORDER BY page_views DESC LIMIT ?`,
+    args: [b.from, b.to, limit],
+  });
+  return rows.rows.map((r: any) => ({
+    page_url: String(r.page_url),
+    page_title: r.page_title ? String(r.page_title) : null,
+    page_views: Number(r.page_views),
+    unique_visitors: Number(r.unique_visitors),
+    sessions: Number(r.sessions),
+  }));
+}
+
+/** Device breakdown with percentages. */
+export async function getDeviceStats(range = '30d', from?: string, to?: string): Promise<DeviceStat[]> {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+  const rows = await db.execute({
+    sql: `SELECT device_type,
+      COUNT(DISTINCT visitor_id) AS visitors,
+      COUNT(DISTINCT session_id) AS sessions,
+      COUNT(*) AS page_views
+    FROM page_views WHERE created_at BETWEEN ? AND ? GROUP BY device_type`,
+    args: [b.from, b.to],
+  });
+  const totalVisitors = rows.rows.reduce((s: number, r: any) => s + Number(r.visitors), 0) || 1;
+  return rows.rows.map((r: any) => ({
+    device_type: String(r.device_type),
+    visitors: Number(r.visitors),
+    sessions: Number(r.sessions),
+    page_views: Number(r.page_views),
+    pct: Math.round((Number(r.visitors) / totalVisitors) * 100),
+  })).sort((a, c) => c.visitors - a.visitors);
+}
+
+/** Traffic sources (referrer + UTM). */
+export async function getTrafficSources(range = '30d', from?: string, to?: string): Promise<SourceStat[]> {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+  const rows = await db.execute({
+    sql: `SELECT
+      COALESCE(
+        CASE
+          WHEN utm_source IS NOT NULL AND utm_source != '' THEN utm_source
+          WHEN referrer IS NULL OR referrer = '' THEN 'direct'
+          WHEN referrer LIKE '%google%' OR referrer LIKE '%bing%' OR referrer LIKE '%yahoo%' OR referrer LIKE '%duckduckgo%' THEN 'organic_search'
+          WHEN referrer LIKE '%facebook%' OR referrer LIKE '%instagram%' OR referrer LIKE '%twitter%' OR referrer LIKE '%x.com%' OR referrer LIKE '%tiktok%' OR referrer LIKE '%snapchat%' OR referrer LIKE '%linkedin%' OR referrer LIKE '%whatsapp%' OR referrer LIKE '%wa.me%' THEN 'social'
+          ELSE 'referral'
+        END,
+        'unknown'
+      ) AS source,
+      COUNT(DISTINCT visitor_id) AS visitors,
+      COUNT(DISTINCT session_id) AS sessions,
+      COUNT(*) AS page_views
+    FROM page_views WHERE created_at BETWEEN ? AND ? GROUP BY source ORDER BY visitors DESC`,
+    args: [b.from, b.to],
+  });
+  return rows.rows.map((r: any) => ({
+    source: String(r.source),
+    visitors: Number(r.visitors),
+    sessions: Number(r.sessions),
+    page_views: Number(r.page_views),
+  }));
+}
+
+/** Daily traffic series for charts. */
+export async function getTrafficSeries(range = '30d', from?: string, to?: string): Promise<TrafficSeriesPoint[]> {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+  const rows = await db.execute({
+    sql: `SELECT substr(created_at, 1, 10) AS day,
+      COUNT(DISTINCT visitor_id) AS visitors,
+      COUNT(DISTINCT session_id) AS sessions,
+      COUNT(*) AS page_views
+    FROM page_views WHERE created_at BETWEEN ? AND ? GROUP BY day ORDER BY day ASC`,
+    args: [b.from, b.to],
+  });
+  return rows.rows.map((r: any) => ({
+    date: String(r.day),
+    visitors: Number(r.visitors),
+    sessions: Number(r.sessions),
+    page_views: Number(r.page_views),
+  }));
+}
+
+/** Landing pages (first page of each session). */
+export async function getLandingPages(range = '30d', from?: string, to?: string, limit = 15): Promise<any[]> {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+  const rows = await db.execute({
+    sql: `SELECT page_url, MAX(page_title) AS page_title,
+      COUNT(*) AS sessions,
+      COUNT(DISTINCT visitor_id) AS visitors
+    FROM page_views
+    WHERE id IN (
+      SELECT MIN(id) FROM page_views WHERE created_at BETWEEN ? AND ? GROUP BY session_id
+    )
+    GROUP BY page_url ORDER BY sessions DESC LIMIT ?`,
+    args: [b.from, b.to, limit],
+  });
+  return rows.rows.map((r: any) => ({
+    page_url: String(r.page_url),
+    page_title: r.page_title ? String(r.page_title) : null,
+    sessions: Number(r.sessions),
+    visitors: Number(r.visitors),
+  }));
+}
+
+/** Page-level traffic breakdown. */
+export async function getPageTraffic(range = '30d', from?: string, to?: string): Promise<any[]> {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+  const rows = await db.execute({
+    sql: `SELECT page_url, MAX(page_title) AS page_title,
+      COUNT(*) AS page_views,
+      COUNT(DISTINCT visitor_id) AS unique_visitors,
+      COUNT(DISTINCT session_id) AS sessions,
+      SUM(CASE WHEN device_type = 'mobile' THEN 1 ELSE 0 END) AS mobile_views
+    FROM page_views WHERE created_at BETWEEN ? AND ? GROUP BY page_url ORDER BY page_views DESC LIMIT 50`,
+    args: [b.from, b.to],
+  });
+  return rows.rows.map((r: any) => ({
+    page_url: String(r.page_url),
+    page_title: r.page_title ? String(r.page_title) : null,
+    page_views: Number(r.page_views),
+    unique_visitors: Number(r.unique_visitors),
+    sessions: Number(r.sessions),
+    mobile_views: Number(r.mobile_views),
+  }));
 }

@@ -391,3 +391,53 @@ export function ServiceIcon({
       return <SparkleIcon className={className} />;
   }
 }
+
+// ─── Use-case icons (solutions page) ───
+
+export function OfficeIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 10h.01M15 10h.01M9 14h.01M15 14h.01" />
+    </svg>
+  );
+}
+
+export function MosqueIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 2c-2 2-4 4-4 7h8c0-3-2-5-4-7zM4 21h16M6 21v-8h12v8M12 13v-2" />
+    </svg>
+  );
+}
+
+export function HospitalIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 6v12M6 12h12M4 20h16M4 4h16" />
+    </svg>
+  );
+}
+
+export function HotelIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 18v-6a2 2 0 012-2h14a2 2 0 012 2v6M3 18h18M3 18v2M21 18v2M7 10V8a2 2 0 012-2h6a2 2 0 012 2v2" />
+    </svg>
+  );
+}
+
+export function SchoolIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V2H6.5A2.5 2.5 0 004 4.5v15z" />
+    </svg>
+  );
+}
+
+export function OutdoorIcon({ className = base }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 22v-7M12 15c-3 0-5-2-5-5 0-2 1-3 2-4 1 1 2 2 2 2 0-3 2-5 2-5s2 2 2 5c0 1 1 1 2 2 1 1 2 2 2 4 0 3-2 5-5 5z" />
+    </svg>
+  );
+}

@@ -27,6 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/products', label: 'المنتجات', icon: '📦', labelEn: 'Products' },
     { href: '/admin/categories', label: 'الأقسام', icon: '📂', labelEn: 'Categories' },
     { href: '/admin/analytics', label: 'تحليلات التواصل', icon: '📈', labelEn: 'Contact Analytics' },
+    { href: '/admin/traffic', label: 'تحليلات الزيارات', icon: '🌐', labelEn: 'Traffic Analytics' },
     { href: '/admin/invoices', label: 'الفواتير', icon: '🧾', labelEn: 'Invoices' },
     { href: '/admin/contacts', label: 'أيقونات التواصل', icon: '📞', labelEn: 'Contact Icons' },
     { href: '/admin/content', label: 'محتوى الموقع', icon: '📝', labelEn: 'Site Content' },

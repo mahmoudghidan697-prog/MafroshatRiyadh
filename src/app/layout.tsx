@@ -10,6 +10,7 @@ import { Footer } from '@/components/Footer';
 import { FloatingContact } from '@/components/FloatingContact';
 import { AdminBar } from '@/components/AdminBar';
 import { ContactTracker } from '@/components/ContactTracker';
+import { TrafficTracker } from '@/components/TrafficTracker';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -97,6 +98,7 @@ export default function RootLayout({
               تخطَّ إلى المحتوى
             </a>
             <ContactTracker />
+            <TrafficTracker />
             <Header />
             <main id="main" className="min-h-[60vh]">
               {children}

@@ -180,46 +180,46 @@ export const categories: Category[] = [
     id: 'runners-stairs',
     name: { ar: 'ممرات وسجاد درج', en: 'Runners & Stair Carpets' },
     description: {
-      ar: 'ممرات ممرات وسجاد درج بقياسات حسب الطلب.',
+      ar: 'ممرات وسجاد درج بقياسات حسب الطلب.',
       en: 'Hallway runners and stair carpets in custom widths.',
     },
     image: '/images/categories/runners-stairs.jpg',
   },
   {
-    id: 'vinyl-parquet',
-    name: { ar: 'فينيل وباركيه', en: 'Vinyl & Parquet' },
-    description: {
-      ar: 'أرضيات فينيل وباركيه بمقاومة عالية للخدش.',
-      en: 'Vinyl and parquet flooring with high scratch resistance.',
-    },
-    image: '/images/categories/vinyl-parquet.jpg',
-  },
-  {
     id: 'artificial-grass',
-    name: { ar: 'نجيل صناعي', en: 'Artificial Grass' },
+    name: { ar: 'عشب صناعي', en: 'Artificial Grass' },
     description: {
-      ar: 'نجيل صناعي للحدائق والملاعب والمساحات الخارجية.',
+      ar: 'عشب صناعي للحدائق والملاعب والمساحات الخارجية.',
       en: 'Artificial grass for gardens, playgrounds, and outdoor spaces.',
     },
     image: '/images/categories/artificial-grass.jpg',
   },
   {
-    id: 'gym-kids-rubber',
-    name: { ar: 'أرضيات مطاطية جيم وأطفال', en: 'Gym & Kids Rubber' },
+    id: 'vinyl-flooring',
+    name: { ar: 'أرضيات فينيل', en: 'Vinyl Flooring' },
     description: {
-      ar: 'أرضيات مطاطية آمنة للجيم وملاعب الأطفال.',
-      en: 'Safe rubber flooring for gyms and kids playgrounds.',
+      ar: 'أرضيات فينيل بجودة عالية للمنازل والمنشآت الطبية والتجارية.',
+      en: 'High-quality vinyl flooring for homes, healthcare, and commercial spaces.',
     },
-    image: '/images/categories/gym-kids-rubber.jpg',
+    image: '/images/categories/vinyl-flooring.jpg',
   },
   {
-    id: 'stable-rubber',
-    name: { ar: 'أرضيات مطاطية لإسطبلات الخيول', en: 'Horse-Stable Rubber' },
+    id: 'parquet-spc',
+    name: { ar: 'باركيه وأرضيات SPC', en: 'Parquet & SPC Flooring' },
     description: {
-      ar: 'أرضيات مطاطية متينة مقاومة للرطوبة لإسطبلات الخيول.',
-      en: 'Durable, moisture-resistant rubber flooring for horse stables.',
+      ar: 'باركيه طبيعي وأرضيات SPC عالية الجودة للمنازل والمكاتب.',
+      en: 'Natural parquet and SPC flooring for homes and offices.',
     },
-    image: '/images/categories/stable-rubber.jpg',
+    image: '/images/categories/parquet-spc.jpg',
+  },
+  {
+    id: 'rubber-flooring',
+    name: { ar: 'أرضيات مطاطية ورياضية', en: 'Rubber & Sports Flooring' },
+    description: {
+      ar: 'أرضيات مطاطية متينة للجيم وملاعب الأطفال والإسطبلات.',
+      en: 'Durable rubber flooring for gyms, playgrounds, and horse stables.',
+    },
+    image: '/images/categories/rubber-flooring.jpg',
   },
 ];
 

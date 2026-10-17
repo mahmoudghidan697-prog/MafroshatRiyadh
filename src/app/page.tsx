@@ -155,7 +155,7 @@ export default function HomePage() {
               <ScrollReveal key={cat.id} delay={i * 50} y={20} className="h-full">
                 <a
                   id={`category-${cat.id}`}
-                  href={`/catalog?category=${cat.id}`}
+                  href={`/${cat.id}`}
                   className="card-lift group flex flex-col h-full rounded-2xl bg-sand-50 dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border overflow-hidden hover:shadow-card hover:border-forest/25 dark:hover:border-forest-light/25"
                 >
                   <div className="aspect-[4/3] overflow-hidden">
