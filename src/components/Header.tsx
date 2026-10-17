@@ -179,7 +179,7 @@ export function Header() {
     >
       {/* ═══ Main header ═══ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="hdr-row items-center">
+        <div className="hdr-row items-center gap-2">
           {/* Logo — image if configured, else the "م" letter. Becomes an
               admin-dashboard shortcut for logged-in admins. */}
           <a
@@ -308,7 +308,7 @@ export function Header() {
             </div>
 
             {/* Contact — desktop only */}
-            <div className="relative hidden xl:block pe-2">
+            <div className="relative hidden xl:block pe-2 ms-auto">
               <a
                 href={phoneLink('header_phone')}
                 aria-label={t.call}

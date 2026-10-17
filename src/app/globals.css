@@ -112,7 +112,7 @@ html.dark .site-header.on-solid .hdr-icon-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 @media (min-width: 1024px) {
   .site-header .hdr-row { height: 3.75rem; } /* 60px desktop */
