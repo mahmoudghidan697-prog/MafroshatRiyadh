@@ -108,7 +108,6 @@ export function Header() {
   // Category dropdown groups
   const carpetCats = categories.filter(c => ['carpets-rugs', 'moquette', 'carpet-tiles', 'mosque-carpets', 'office-commercial', 'runners-stairs'].includes(c.id));
   const flooringCats = categories.filter(c => ['vinyl-flooring', 'parquet-spc', 'rubber-flooring', 'stable-rubber'].includes(c.id));
-  const outdoorCats = categories.filter(c => ['artificial-grass'].includes(c.id));
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
@@ -214,7 +213,6 @@ export function Header() {
             <a href="/catalog" className={`hdr-nav-link ${navCls}`}>{t.navCatalog}</a>
             <Dropdown id="carpets" label={locale === 'ar' ? 'السجاد والموكيت' : 'Carpets & Moquette'} items={carpetCats} />
             <Dropdown id="flooring" label={locale === 'ar' ? 'الأرضيات' : 'Flooring'} items={flooringCats} />
-            <a href="/artificial-grass" className={`hdr-nav-link ${navCls}`}>{locale === 'ar' ? 'عشب صناعي' : 'Artificial Grass'}</a>
             <a href="/solutions" className={`hdr-nav-link ${navCls}`}>{locale === 'ar' ? 'حلول الشركات' : 'Solutions'}</a>
             <a href="/about" className={`hdr-nav-link ${navCls}`}>{t.navAbout}</a>
             <a href="/contact" className={`hdr-nav-link ${navCls}`}>{t.navContact}</a>
@@ -403,14 +401,6 @@ export function Header() {
                 {loc(locale, c.name)}
               </a>
             ))}
-            <a
-              href="/#category-artificial-grass"
-              onClick={() => setMobileOpen(false)}
-              className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-sand-100 dark:hover:bg-charcoal-light flex items-center justify-between gap-2"
-            >
-              {locale === 'ar' ? 'عشب صناعي' : 'Artificial Grass'}
-              <ArrowRightIcon className="w-3.5 h-3.5 flip-rtl text-charcoal/30 dark:text-ivory/30" />
-            </a>
             <a
               href="/solutions"
               onClick={() => setMobileOpen(false)}
