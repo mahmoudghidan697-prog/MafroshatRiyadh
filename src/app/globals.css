@@ -121,6 +121,10 @@ html.dark .site-header.on-solid .hdr-icon-btn {
 /* Prevent SVG icons from ever ballooning and stretching the header */
 .site-header svg { flex-shrink: 0; }
 
+/* Hide scrollbar for thumbnail strips */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ═══ Fonts ═══ */
 :root {
   --font-arabic: 'Cairo', 'Noto Sans Arabic', system-ui, sans-serif;

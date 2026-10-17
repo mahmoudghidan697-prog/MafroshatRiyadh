@@ -120,14 +120,14 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
                 </div>
                 {/* Thumbnails */}
                 {primaryProduct.images.length > 1 && (
-                  <div className="flex gap-3 mt-4">
+                  <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
                     {primaryProduct.images.map((img, i) => (
                       <button
                         key={i}
                         onClick={() => setActiveImage(i)}
                         aria-label={`${t.galleryImage} ${i + 1}`}
                         aria-current={activeImage === i}
-                        className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition-colors ${
+                        className={`shrink-0 w-24 h-24 sm:w-28 sm:h-28 rounded-xl overflow-hidden border-2 transition-colors ${
                           activeImage === i
                             ? 'border-forest dark:border-forest-light'
                             : 'border-transparent'
