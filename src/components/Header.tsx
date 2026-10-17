@@ -68,6 +68,26 @@ export function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Lock body scroll when mobile menu is open + enable menu scroll containment
+  useEffect(() => {
+    if (mobileOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overscrollBehavior = 'none';
+      return () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        document.documentElement.style.overscrollBehavior = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [mobileOpen]);
+
   // Close search results when clicking outside
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -338,7 +358,7 @@ export function Header() {
 
       {/* ═══ Mobile drawer ═══ */}
       {mobileOpen && (
-        <div className="lg:hidden border-t border-charcoal/10 dark:border-white/10 bg-ivory/95 dark:bg-charcoal/95 backdrop-blur-md fade-in">
+        <div className="lg:hidden border-t border-charcoal/10 dark:border-white/10 bg-ivory/95 dark:bg-charcoal/95 backdrop-blur-md fade-in max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain">
           <nav className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1" aria-label={t.navProducts}>
             {/* Mobile search */}
             <form
