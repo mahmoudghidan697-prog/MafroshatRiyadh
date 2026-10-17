@@ -107,7 +107,7 @@ export function Header() {
 
   // Category dropdown groups
   const carpetCats = categories.filter(c => ['carpets-rugs', 'moquette', 'carpet-tiles', 'mosque-carpets', 'office-commercial', 'runners-stairs'].includes(c.id));
-  const flooringCats = categories.filter(c => ['vinyl-flooring', 'parquet-spc', 'rubber-flooring'].includes(c.id));
+  const flooringCats = categories.filter(c => ['vinyl-flooring', 'parquet-spc', 'rubber-flooring', 'stable-rubber'].includes(c.id));
   const outdoorCats = categories.filter(c => ['artificial-grass'].includes(c.id));
 
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);

@@ -216,10 +216,19 @@ export const categories: Category[] = [
     id: 'rubber-flooring',
     name: { ar: 'أرضيات مطاطية ورياضية', en: 'Rubber & Sports Flooring' },
     description: {
-      ar: 'أرضيات مطاطية متينة للجيم وملاعب الأطفال والإسطبلات.',
-      en: 'Durable rubber flooring for gyms, playgrounds, and horse stables.',
+      ar: 'أرضيات مطاطية متينة للجيم وملاعب الأطفال.',
+      en: 'Durable rubber flooring for gyms and kids playgrounds.',
     },
     image: '/images/categories/rubber-flooring.jpg',
+  },
+  {
+    id: 'stable-rubber',
+    name: { ar: 'ربل خيل', en: 'Horse Stable Rubber' },
+    description: {
+      ar: 'أرضيات مطاطية متينة مقاومة للرطوبة لإسطبلات الخيول.',
+      en: 'Durable, moisture-resistant rubber flooring for horse stables.',
+    },
+    image: '/images/categories/stable-rubber.jpg',
   },
 ];
 
