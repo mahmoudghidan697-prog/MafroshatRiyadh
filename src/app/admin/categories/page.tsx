@@ -8,11 +8,18 @@ interface Category {
   id: string;
   name: { ar: string; en: string };
   image: string;
+  primaryProductId?: string;
+}
+
+interface Product {
+  slug: string;
+  name: { ar: string; en: string };
 }
 
 export default function AdminCategories() {
   const { locale } = useApp();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
@@ -26,7 +33,8 @@ export default function AdminCategories() {
     const res = await fetch('/api/admin/products');
     if (res.ok) {
       const data = await res.json();
-      setCategories(data.categories);
+      setCategories(data.categories || []);
+      setProducts(data.products || []);
     }
     setLoading(false);
   }
@@ -42,6 +50,7 @@ export default function AdminCategories() {
       id: category.id,
       name: category.name,
       image,
+      primaryProductId: category.primaryProductId,
     };
     await fetch('/api/admin/categories', {
       method: 'PUT',
@@ -50,6 +59,13 @@ export default function AdminCategories() {
     });
     loadCategories();
   }
+
+  // Get products for a specific category
+  const getCategoryProducts = (categoryId: string) => {
+    // We need to fetch products with their category info
+    // The products from /api/admin/products should have category field
+    return products.filter((p: any) => p.category === categoryId);
+  };
 
   return (
     <div>
@@ -80,7 +96,12 @@ export default function AdminCategories() {
               <img src={c.image} alt={c.name.ar} className="w-full aspect-[4/3] object-cover" />
               <div className="p-4">
                 <div className="font-medium text-charcoal dark:text-ivory">{c.name.ar}</div>
-                <div className="text-xs text-charcoal/50 dark:text-ivory/50 mb-3">{c.name.en}</div>
+                <div className="text-xs text-charcoal/50 dark:text-ivory/50 mb-1">{c.name.en}</div>
+                <div className="text-xs text-forest dark:text-forest-light mb-3">
+                  {c.primaryProductId
+                    ? (locale === 'ar' ? 'منتج مرتبط: ' : 'Product: ') + c.primaryProductId
+                    : (locale === 'ar' ? 'لا يوجد منتج رئيسي' : 'No primary product')}
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
@@ -107,6 +128,7 @@ export default function AdminCategories() {
       {showForm && (
         <CategoryForm
           category={editing}
+          products={products}
           onClose={() => setShowForm(false)}
           onSaved={loadCategories}
         />
@@ -117,10 +139,12 @@ export default function AdminCategories() {
 
 function CategoryForm({
   category,
+  products,
   onClose,
   onSaved,
 }: {
   category: Category | null;
+  products: Product[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -130,6 +154,7 @@ function CategoryForm({
     name_ar: category?.name?.ar || '',
     name_en: category?.name?.en || '',
     image: category?.image || '/images/categories/default.jpg',
+    primaryProductId: category?.primaryProductId || '',
   });
   const [imageSelection, setImageSelection] = useState<string[]>(
     category?.image ? [category.image] : [],
@@ -137,6 +162,11 @@ function CategoryForm({
   const [showImageManager, setShowImageManager] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Get products for this category (or all products if new category)
+  const categoryProducts = category
+    ? products.filter((p: any) => p.category === category.id)
+    : [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -147,6 +177,7 @@ function CategoryForm({
       id: form.id,
       name: { ar: form.name_ar, en: form.name_en },
       image: imageSelection[0] || form.image,
+      primaryProductId: form.primaryProductId || undefined,
     };
 
     try {
@@ -187,15 +218,13 @@ function CategoryForm({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-ivory dark:bg-charcoal-light rounded-2xl w-full max-w-md p-6">
+      <div className="relative bg-ivory dark:bg-charcoal-light rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-bold text-charcoal dark:text-ivory mb-4">
           {category
             ? locale === 'ar' ? 'تعديل قسم' : 'Edit Category'
             : locale === 'ar' ? 'إضافة قسم' : 'Add Category'}
         </h2>
-
         {error && <div className="mb-4 p-3 rounded-xl bg-red-50 text-red-700 text-sm">{error}</div>}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
             <span className="text-xs font-medium text-charcoal/70 dark:text-ivory/70 mb-1 block">
@@ -230,6 +259,27 @@ function CategoryForm({
               />
             </label>
           </div>
+
+          {/* Primary Product Selector */}
+          <label className="block">
+            <span className="text-xs font-medium text-charcoal/70 dark:text-ivory/70 mb-1 block">
+              {locale === 'ar' ? 'المنتج الرئيسي' : 'Primary Product'}
+            </span>
+            <select
+              value={form.primaryProductId}
+              onChange={(e) => setForm({ ...form, primaryProductId: e.target.value })}
+              className="w-full h-10 px-3 rounded-lg bg-sand-100 dark:bg-charcoal-elevated border border-charcoal/10 dark:border-charcoal-border text-sm"
+            >
+              <option value="">
+                {locale === 'ar' ? '— بدون —' : '— None —'}
+              </option>
+              {categoryProducts.map((p) => (
+                <option key={p.slug} value={p.slug}>
+                  {locale === 'ar' ? p.name.ar : p.name.en}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <label className="block">
             <span className="text-xs font-medium text-charcoal/70 dark:text-ivory/70 mb-1 block">

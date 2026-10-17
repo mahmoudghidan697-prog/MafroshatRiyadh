@@ -39,6 +39,7 @@ export async function PUT(req: NextRequest) {
       name: { ar: body.name.ar, en: body.name.en },
       description: { ar: body.description?.ar ?? '', en: body.description?.en ?? '' },
       image: body.image,
+      primaryProductId: body.primaryProductId,
     });
     return NextResponse.json({ ok: true });
   } catch (e: any) {

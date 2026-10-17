@@ -126,6 +126,7 @@ export interface Category {
   name: Localized;
   description: Localized;
   image: string;
+  primaryProductId?: string;
 }
 
 // ─── Categories ───

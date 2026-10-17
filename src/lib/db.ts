@@ -53,7 +53,8 @@ async function ensureSchema() {
     );
     CREATE TABLE IF NOT EXISTS categories (
       id TEXT PRIMARY KEY, name_ar TEXT NOT NULL, name_en TEXT NOT NULL,
-      description_ar TEXT, description_en TEXT, image TEXT NOT NULL
+      description_ar TEXT, description_en TEXT, image TEXT NOT NULL,
+      primary_product_id TEXT
     );
     CREATE TABLE IF NOT EXISTS admin_users (
       id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL,
@@ -202,6 +203,12 @@ async function migrateMerchantSchema() {
       );
       CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(read);
     `);
+    // Add primary_product_id to categories (safe — only if missing)
+    const catInfo = await db.execute({ sql: 'PRAGMA table_info(categories)', args: [] });
+    const catCols = catInfo.rows.map((c: any) => String(c.name));
+    if (!catCols.includes('primary_product_id')) {
+      await db.execute({ sql: 'ALTER TABLE categories ADD COLUMN primary_product_id TEXT', args: [] });
+    }
     // Add merchant_id to products (safe — only if missing)
     const info = await db.execute({ sql: 'PRAGMA table_info(products)', args: [] });
     const has = info.rows.some((r: any) => r.name === 'merchant_id');
@@ -322,6 +329,7 @@ function rowToCategory(r: any): Category {
     id: r.id, name: { ar: r.name_ar, en: r.name_en },
     description: { ar: r.description_ar ?? '', en: r.description_en ?? '' },
     image: r.image,
+    primaryProductId: r.primary_product_id ?? undefined,
   };
 }
 
@@ -635,6 +643,10 @@ export async function updateCategory(id: string, updates: Partial<Category>) {
   if (updates.image) {
     fields.push('image = ?');
     args.push(updates.image);
+  }
+  if (updates.primaryProductId !== undefined) {
+    fields.push('primary_product_id = ?');
+    args.push(updates.primaryProductId);
   }
   if (fields.length === 0) return;
   args.push(id);
