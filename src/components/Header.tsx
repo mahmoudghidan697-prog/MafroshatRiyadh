@@ -175,7 +175,7 @@ export function Header() {
 
   return (
     <header
-      className={`site-header ${onHero ? 'on-hero' : 'on-solid'} ${headerCls} overflow-hidden`}
+      className={`site-header ${onHero ? 'on-hero' : 'on-solid'} ${headerCls}`}
     >
       {/* ═══ Main header ═══ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -312,12 +312,11 @@ export function Header() {
               <a
                 href={phoneLink('header_phone')}
                 aria-label={t.call}
-                title={t.callTooltip}
+                title={contactNumber('header_phone') || t.callTooltip}
                 data-contact-key="header_phone"
-                className="flex items-center gap-2 h-9 px-3.5 rounded-full bg-forest text-ivory text-sm font-medium hover:bg-forest-light transition-colors whitespace-nowrap"
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-forest text-ivory hover:bg-forest-light transition-colors shadow-md"
               >
-                <PhoneIcon className="w-4 h-4 shrink-0" />
-                <span dir="ltr">{contactNumber('header_phone') || '—'}</span>
+                <PhoneIcon className="w-4 h-4" />
               </a>
               <span className="absolute -top-1 -end-1">
                 <ContactEditBadge contactKey="header_phone" currentNumber={contactNumber('header_phone')} onSaved={refresh} />
