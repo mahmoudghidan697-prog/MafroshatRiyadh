@@ -157,6 +157,7 @@ export default function HomePage() {
                   id={`category-${cat.id}`}
                   href={`/${cat.id}`}
                   className="card-lift group flex flex-col h-full rounded-2xl bg-sand-50 dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border overflow-hidden hover:shadow-card hover:border-forest/25 dark:hover:border-forest-light/25"
+                  style={{ scrollMarginTop: '80px' }}
                 >
                   <div className="aspect-[4/3] overflow-hidden">
                     <img

@@ -383,7 +383,7 @@ export function Header() {
             {carpetCats.map((c) => (
               <a
                 key={c.id}
-                href={`/${c.id}`}
+                href={`/#category-${c.id}`}
                 onClick={() => setMobileOpen(false)}
                 className="ps-6 pe-3 py-2 rounded-lg text-sm hover:bg-sand-100 dark:hover:bg-charcoal-light"
               >
@@ -396,7 +396,7 @@ export function Header() {
             {flooringCats.map((c) => (
               <a
                 key={c.id}
-                href={`/${c.id}`}
+                href={`/#category-${c.id}`}
                 onClick={() => setMobileOpen(false)}
                 className="ps-6 pe-3 py-2 rounded-lg text-sm hover:bg-sand-100 dark:hover:bg-charcoal-light"
               >
@@ -404,7 +404,7 @@ export function Header() {
               </a>
             ))}
             <a
-              href="/artificial-grass"
+              href="/#category-artificial-grass"
               onClick={() => setMobileOpen(false)}
               className="px-3 py-2.5 rounded-lg text-sm font-medium hover:bg-sand-100 dark:hover:bg-charcoal-light flex items-center justify-between gap-2"
             >
