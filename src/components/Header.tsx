@@ -175,11 +175,11 @@ export function Header() {
 
   return (
     <header
-      className={`site-header ${onHero ? 'on-hero' : 'on-solid'} ${headerCls}`}
+      className={`site-header ${onHero ? 'on-hero' : 'on-solid'} ${headerCls} overflow-hidden`}
     >
       {/* ═══ Main header ═══ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="hdr-row">
+        <div className="hdr-row items-center">
           {/* Logo — image if configured, else the "م" letter. Becomes an
               admin-dashboard shortcut for logged-in admins. */}
           <a
@@ -290,7 +290,7 @@ export function Header() {
             </button>
 
             {/* WhatsApp — always visible (primary contact) */}
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 pe-1">
               <a
                 href={waLink('header_whatsapp', t.whatsappMessageDefault)}
                 target="_blank"
@@ -308,7 +308,7 @@ export function Header() {
             </div>
 
             {/* Contact — desktop only */}
-            <div className="relative hidden xl:block">
+            <div className="relative hidden xl:block pe-2">
               <a
                 href={phoneLink('header_phone')}
                 aria-label={t.call}
