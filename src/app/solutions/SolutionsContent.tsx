@@ -1,6 +1,7 @@
 'use client';
 
 import { useApp } from '@/context/AppContext';
+import { ContactEditBadge } from '@/components/ContactEditBadge';
 import { useSiteData } from '@/hooks/useSiteData';
 import { useContacts } from '@/hooks/useContacts';
 import { loc } from '@/lib/i18n';
@@ -131,7 +132,8 @@ const whyUs = [
 
 export default function SolutionsContent() {
   const { locale, t } = useApp();
-  const { waLink, phoneLink } = useContacts();
+  const { waLink, phoneLink, number: contactNumber } = useContacts();
+  const { refresh } = useSiteData();
   const { products, categories: liveCategories, loading } = useSiteData();
 
   // Only show use cases that have real products in at least one category
@@ -320,24 +322,34 @@ export default function SolutionsContent() {
                     : 'Contact us for a free quote and expert consultation to choose the right flooring for your project.'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-4">
-                  <a
-                    href={waDefault}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-contact-key="solutions_whatsapp"
-                    className="inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#1da851] transition-colors shadow-lg shadow-[#25D366]/25"
-                  >
-                    <WhatsAppIcon className="w-5 h-5" />
-                    {t.whatsappUs}
-                  </a>
-                  <a
-                    href={phoneLink('solutions_phone')}
-                    data-contact-key="solutions_phone"
-                    className="inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-ivory/15 text-ivory font-medium hover:bg-ivory/25 transition-colors border border-ivory/20"
-                  >
-                    <PhoneIcon className="w-5 h-5" />
-                    {t.callUs}
-                  </a>
+                  <div className="relative inline-flex">
+                    <a
+                      href={waDefault}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-contact-key="solutions_whatsapp"
+                      className="inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-[#25D366] text-white font-medium hover:bg-[#1da851] transition-colors shadow-lg shadow-[#25D366]/25"
+                    >
+                      <WhatsAppIcon className="w-5 h-5" />
+                      {t.whatsappUs}
+                    </a>
+                    <span className="absolute -top-1 -end-1">
+                      <ContactEditBadge contactKey="solutions_whatsapp" currentNumber={contactNumber('solutions_whatsapp')} onSaved={refresh} />
+                    </span>
+                  </div>
+                  <div className="relative inline-flex">
+                    <a
+                      href={phoneLink('solutions_phone')}
+                      data-contact-key="solutions_phone"
+                      className="inline-flex items-center gap-2 h-12 px-8 rounded-xl bg-ivory/15 text-ivory font-medium hover:bg-ivory/25 transition-colors border border-ivory/20"
+                    >
+                      <PhoneIcon className="w-5 h-5" />
+                      {t.callUs}
+                    </a>
+                    <span className="absolute -top-1 -end-1">
+                      <ContactEditBadge contactKey="solutions_phone" currentNumber={contactNumber('solutions_phone')} onSaved={refresh} />
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
