@@ -208,7 +208,11 @@ html[dir='rtl'] .flip-rtl {
   transform: scaleX(-1);
 }
 
+/* Mobile-first: the viewport fix below forces every container inside the
+   Next.js root to respect the physical phone width — without it some pages
+   render at a desktop-scale layout on small screens. */
 /* ═══ Prevent horizontal overflow anywhere ═══ */
+/* viewport-fix-v3 */
 html, body {
   max-width: 100%;
   overflow-x: hidden;
