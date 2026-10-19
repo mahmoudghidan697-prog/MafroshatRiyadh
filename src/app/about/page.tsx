@@ -1,10 +1,13 @@
 'use client';
 
 import { useApp } from '@/context/AppContext';
-import { business, contact, whatsappLink, phoneLink } from '@/data/site';
+import { business, contact } from '@/data/site';
 import { loc } from '@/lib/i18n';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { SectionHeader } from '@/components/SectionHeader';
+import { ContactEditBadge } from '@/components/ContactEditBadge';
+import { useSiteData } from '@/hooks/useSiteData';
+import { useContacts } from '@/hooks/useContacts';
 import {
   WhatsAppIcon,
   PhoneIcon,
@@ -16,6 +19,8 @@ import {
 
 export default function AboutPage() {
   const { locale, t } = useApp();
+  const { refresh } = useSiteData();
+  const { waLink, phoneLink, number: contactNumber } = useContacts();
 
   const pillars = [
     {
@@ -75,22 +80,34 @@ export default function AboutPage() {
                 <p>{t.aboutUsP3}</p>
               </div>
               <div className="flex flex-wrap gap-3 mt-8">
-                <a
-                  href={whatsappLink(t.whatsappMessageDefault, locale)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95"
-                >
-                  <WhatsAppIcon className="w-5 h-5" />
-                  {t.whatsappUs}
-                </a>
-                <a
-                  href={phoneLink()}
-                  className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-forest text-ivory font-medium hover:bg-forest-light"
-                >
-                  <PhoneIcon className="w-5 h-5" />
-                  {t.callUs}
-                </a>
+                <div className="relative inline-flex">
+                  <a
+                    href={waLink('about_whatsapp', t.whatsappMessageDefault)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-contact-key="about_whatsapp"
+                    className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95"
+                  >
+                    <WhatsAppIcon className="w-5 h-5" />
+                    {t.whatsappUs}
+                  </a>
+                  <span className="absolute -top-1 -end-1">
+                    <ContactEditBadge contactKey="about_whatsapp" currentNumber={contactNumber('about_whatsapp')} onSaved={refresh} />
+                  </span>
+                </div>
+                <div className="relative inline-flex">
+                  <a
+                    href={phoneLink('about_phone')}
+                    data-contact-key="about_phone"
+                    className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-forest text-ivory font-medium hover:bg-forest-light"
+                  >
+                    <PhoneIcon className="w-5 h-5" />
+                    {t.callUs}
+                  </a>
+                  <span className="absolute -top-1 -end-1">
+                    <ContactEditBadge contactKey="about_phone" currentNumber={contactNumber('about_phone')} onSaved={refresh} />
+                  </span>
+                </div>
               </div>
             </ScrollReveal>
           </div>

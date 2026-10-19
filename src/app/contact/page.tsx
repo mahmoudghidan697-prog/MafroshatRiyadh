@@ -150,22 +150,28 @@ export default function ContactPage() {
                     </span>
                   </div>
 
-                  <a
-                    href={`mailto:${contact.email}`}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-sand-100 dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border hover:bg-sand-200 dark:hover:bg-charcoal-elevated transition-colors"
-                  >
-                    <span className="w-12 h-12 rounded-xl bg-charcoal/10 dark:bg-ivory/10 text-charcoal dark:text-ivory flex items-center justify-center shrink-0">
-                      <MailIcon className="w-5 h-5" />
-                    </span>
-                    <span>
-                      <span className="block font-semibold text-charcoal dark:text-ivory">
-                        {t.emailUs}
+                  <div className="relative flex items-center">
+                    <a
+                      href={`mailto:${contact.email}`}
+                      data-contact-key="contact_email"
+                      className="flex items-center gap-4 p-4 rounded-2xl bg-sand-100 dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border hover:bg-sand-200 dark:hover:bg-charcoal-elevated transition-colors"
+                    >
+                      <span className="w-12 h-12 rounded-xl bg-charcoal/10 dark:bg-ivory/10 text-charcoal dark:text-ivory flex items-center justify-center shrink-0">
+                        <MailIcon className="w-5 h-5" />
                       </span>
-                      <span className="block text-sm text-charcoal/60 dark:text-ivory/60" dir="ltr">
-                        {contact.email}
+                      <span>
+                        <span className="block font-semibold text-charcoal dark:text-ivory">
+                          {t.emailUs}
+                        </span>
+                        <span className="block text-sm text-charcoal/60 dark:text-ivory/60" dir="ltr">
+                          {contact.email}
+                        </span>
                       </span>
+                    </a>
+                    <span className="absolute top-2 end-2">
+                      <ContactEditBadge contactKey="contact_email" currentNumber={contact.email} onSaved={refresh} />
                     </span>
-                  </a>
+                  </div>
                 </div>
 
                 {/* Address & hours */}
