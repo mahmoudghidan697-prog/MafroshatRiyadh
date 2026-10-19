@@ -149,17 +149,17 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
                 <span className="text-xs uppercase tracking-wider text-olive dark:text-olive/80 font-semibold">
                   {categoryName}
                 </span>
-                <h2 className="text-2xl lg:text-4xl font-bold text-charcoal dark:text-ivory mt-2 mb-4 leading-tight">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-charcoal dark:text-ivory mt-2 mb-3 leading-tight">
                   {loc(locale, primaryProduct.name)}
                 </h2>
 
-                <div className="flex items-baseline gap-3 mb-6">
+                <div className="flex items-baseline gap-3 mb-5">
                   {primaryProduct.price ? (
-                    <span className="text-2xl lg:text-3xl font-bold text-forest dark:text-forest-light">
+                    <span className="text-xl sm:text-2xl font-bold text-forest dark:text-forest-light">
                       {formatPrice(locale, primaryProduct.price.amount, primaryProduct.price.currency)}
                     </span>
                   ) : (
-                    <span className="text-xl font-semibold text-charcoal/70 dark:text-ivory/60">
+                    <span className="text-lg font-semibold text-charcoal/70 dark:text-ivory/60">
                       {t.priceOnRequest}
                     </span>
                   )}
@@ -171,7 +171,7 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
                 </div>
 
                 {/* Quick specs */}
-                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-charcoal/70 dark:text-ivory/65 mb-6">
+                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm sm:text-base text-charcoal/70 dark:text-ivory/65 mb-6">
                   {primaryProduct.dimensions && (
                     <span>
                       <span className="font-medium text-charcoal dark:text-ivory">{t.dimensions}:</span>{' '}
