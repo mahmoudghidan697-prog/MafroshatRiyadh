@@ -146,7 +146,7 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
 
               {/* ═══ Info ═══ */}
               <div>
-                <span className="text-xs uppercase tracking-wider text-olive dark:text-olive/80 font-semibold">
+                <span className="text-sm sm:text-base uppercase tracking-wider text-olive dark:text-olive/80 font-semibold">
                   {categoryName}
                 </span>
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-charcoal dark:text-ivory mt-2 mb-3 leading-tight">
@@ -164,7 +164,7 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
                     </span>
                   )}
                   {primaryProduct.unit && (
-                    <span className="text-sm text-charcoal/50 dark:text-ivory/45">
+                    <span className="text-sm sm:text-base text-charcoal/50 dark:text-ivory/45">
                       {loc(locale, primaryProduct.unit)}
                     </span>
                   )}
