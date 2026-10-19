@@ -99,7 +99,7 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
           <EmptyState />
         ) : (
           <>
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-14">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-14 min-w-0">
               {/* ═══ Gallery ═══ */}
               <div>
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden relative bg-sand-100 dark:bg-charcoal-elevated">
