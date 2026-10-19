@@ -127,7 +127,7 @@ export default function CategoryContent({ categoryId }: { categoryId: string }) 
                         onClick={() => setActiveImage(i)}
                         aria-label={`${t.galleryImage} ${i + 1}`}
                         aria-current={activeImage === i}
-                        className={`shrink-0 basis-16 sm:basis-24 grow-0 w-16 h-16 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 transition-colors ${
+                        className={`shrink-0 basis-16 sm:basis-24 grow-0 w-16 h-16 sm:w-24 sm:h-24 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
                           activeImage === i
                             ? 'border-forest dark:border-forest-light'
                             : 'border-transparent'
