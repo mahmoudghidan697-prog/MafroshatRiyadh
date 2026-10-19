@@ -395,40 +395,55 @@ export default function HomePage() {
               {t.contactSubtitle}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
-              <a
-                href={waLink(
-                  'home_whatsapp',
-                  locale === 'ar'
-                    ? 'مرحباً، أرغب في طلب قياس مجاني للمكان'
-                    : 'Hello, I would like to request a free measurement',
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={t.freeMeasureTooltip}
-                data-contact-key="home_whatsapp"
-                className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-ivory text-forest font-semibold hover:bg-ivory/90 shadow-md"
-              >
-                <RulerIcon className="w-5 h-5" />
-                {t.freeMeasure}
-              </a>
-              <a
-                href={waDefault}
-                target="_blank"
-                rel="noopener noreferrer"
-                data-contact-key="home_whatsapp"
-                className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 shadow-md"
-              >
-                <WhatsAppIcon className="w-5 h-5" />
-                {t.whatsappLabel}
-              </a>
-              <a
-                href={phoneLink('home_phone')}
-                data-contact-key="home_phone"
-                className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-ivory/15 text-ivory font-medium hover:bg-ivory/25"
-              >
-                <PhoneIcon className="w-5 h-5" />
-                {t.callNow}
-              </a>
+              <div className="relative inline-flex">
+                <a
+                  href={waLink(
+                    'home_whatsapp',
+                    locale === 'ar'
+                      ? 'مرحباً، أرغب في طلب قياس مجاني للمكان'
+                      : 'Hello, I would like to request a free measurement',
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={t.freeMeasureTooltip}
+                  data-contact-key="home_whatsapp"
+                  className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-ivory text-forest font-semibold hover:bg-ivory/90 shadow-md"
+                >
+                  <RulerIcon className="w-5 h-5" />
+                  {t.freeMeasure}
+                </a>
+                <span className="absolute -top-1 -end-1">
+                  <ContactEditBadge contactKey="home_whatsapp" currentNumber={contactNumber('home_whatsapp')} onSaved={refresh} />
+                </span>
+              </div>
+              <div className="relative inline-flex">
+                <a
+                  href={waDefault}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-contact-key="home_whatsapp"
+                  className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-[#25D366] text-white font-medium hover:brightness-95 shadow-md"
+                >
+                  <WhatsAppIcon className="w-5 h-5" />
+                  {t.whatsappLabel}
+                </a>
+                <span className="absolute -top-1 -end-1">
+                  <ContactEditBadge contactKey="home_whatsapp" currentNumber={contactNumber('home_whatsapp')} onSaved={refresh} />
+                </span>
+              </div>
+              <div className="relative inline-flex">
+                <a
+                  href={phoneLink('home_phone')}
+                  data-contact-key="home_phone"
+                  className="btn-press inline-flex items-center gap-2 h-12 px-6 rounded-xl bg-ivory/15 text-ivory font-medium hover:bg-ivory/25"
+                >
+                  <PhoneIcon className="w-5 h-5" />
+                  {t.callNow}
+                </a>
+                <span className="absolute -top-1 -end-1">
+                  <ContactEditBadge contactKey="home_phone" currentNumber={contactNumber('home_phone')} onSaved={refresh} />
+                </span>
+              </div>
             </div>
           </ScrollReveal>
         </div>

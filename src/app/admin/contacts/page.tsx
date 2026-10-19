@@ -76,6 +76,26 @@ export default function AdminContacts() {
       ? { cls: 'bg-[#25D366]/10 text-[#25D366] dark:bg-[#25D366]/15', label: 'واتساب', labelEn: 'WhatsApp' }
       : { cls: 'bg-forest/10 text-forest dark:bg-forest-light/15 dark:text-forest-light', label: 'هاتف', labelEn: 'Phone' };
 
+  // Map each contact key to the public page where it appears
+  const keyToPage: Record<string, string> = {
+    header_whatsapp: '/',
+    header_phone: '/',
+    footer_whatsapp: '/',
+    footer_phone: '/',
+    floating_whatsapp: '/',
+    floating_phone: '/',
+    home_whatsapp: '/',
+    home_phone: '/',
+    product_whatsapp: '/catalog',
+    product_phone: '/catalog',
+    product_detail_whatsapp: '/catalog',
+    product_detail_phone: '/catalog',
+    contact_page_whatsapp: '/contact',
+    contact_page_phone: '/contact',
+    solutions_whatsapp: '/solutions',
+    solutions_phone: '/solutions',
+  };
+
   return (
     <div>
       <div className="mb-6">
@@ -169,6 +189,15 @@ export default function AdminContacts() {
                           className="btn-press h-9 px-3 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm font-medium text-forest dark:text-forest-light hover:border-forest dark:hover:border-forest-light"
                         >
                           {isAr ? 'تعديل' : 'Edit'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            const page = keyToPage[c.key] || '/';
+                            window.open(`https://mafroshat-riyadh.vercel.app${page}`, '_blank');
+                          }}
+                          className="btn-press h-9 px-3 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm font-medium text-charcoal dark:text-ivory hover:border-forest dark:hover:border-forest-light"
+                        >
+                          {isAr ? 'عرض في الموقع' : 'View on site'}
                         </button>
                         <button
                           onClick={() => toggleActive(c)}
