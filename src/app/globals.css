@@ -209,8 +209,19 @@ html[dir='rtl'] .flip-rtl {
 }
 
 /* ═══ Prevent horizontal overflow anywhere ═══ */
-body {
+html, body {
+  max-width: 100%;
   overflow-x: hidden;
+}
+
+/* Force all containers to respect viewport width */
+#__next, [class*="max-w-7xl"], [class*="max-w-6xl"], [class*="max-w-5xl"] {
+  max-width: 100% !important;
+}
+
+/* Prevent any element from forcing horizontal scroll */
+*, *::before, *::after {
+  max-width: 100%;
 }
 
 /* ═══ Smooth theme transition (short, to avoid flicker feeling) ═══ */
