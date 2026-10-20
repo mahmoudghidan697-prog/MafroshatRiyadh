@@ -98,6 +98,7 @@ async function ensureSchema() {
   await seedContacts();
   // Safe migration: add contact_key to contact_events if missing (older DBs)
   await migrateContactEventsKey();
+  await migrateMissingContacts();
   // Safe migration: merchant/agreement/billing tables + columns
   await migrateMerchantSchema();
   // Safe migration: website traffic analytics table
@@ -130,6 +131,26 @@ async function migrateContactEventsKey() {
     const info2 = await db.execute({ sql: 'PRAGMA table_info(contact_events)', args: [] });
     if (!info2.rows.some((r: any) => r.name === 'device_type')) {
       await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN device_type TEXT', args: [] });
+    }
+  } catch {
+    // Ignore — best effort
+  }
+}
+
+// ─── Ensure every DEFAULT_CONTACTS key exists (runs every time) ───
+async function migrateMissingContacts() {
+  try {
+    const db = getDb();
+    const now = new Date().toISOString();
+    for (const c of DEFAULT_CONTACTS) {
+      const ex = await db.execute({ sql: 'SELECT 1 FROM contacts WHERE key = ?', args: [c.key] });
+      if (ex.rows.length === 0) {
+        await db.execute({
+          sql: `INSERT INTO contacts (key, name_ar, name_en, type, number, location_ar, location_en, active, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+          args: [c.key, c.name_ar, c.name_en, c.type, c.fallback(), c.location_ar, c.location_en, now, now],
+        });
+      }
     }
   } catch {
     // Ignore — best effort
@@ -290,6 +311,10 @@ const DEFAULT_CONTACTS = [
   { key: 'contact_page_phone', name_ar: 'هاتف صفحة التواصل', name_en: 'Contact Page Phone', type: 'phone', location_ar: 'صفحة تواصل معنا', location_en: 'Contact page', fallback: () => staticContact.phone },
   { key: 'home_whatsapp', name_ar: 'واتساب الصفحة الرئيسية', name_en: 'Homepage WhatsApp', type: 'whatsapp', location_ar: 'الصفحة الرئيسية', location_en: 'Homepage', fallback: () => staticContact.whatsapp },
   { key: 'home_phone', name_ar: 'هاتف الصفحة الرئيسية', name_en: 'Homepage Phone', type: 'phone', location_ar: 'الصفحة الرئيسية', location_en: 'Homepage', fallback: () => staticContact.phone },
+  { key: 'about_whatsapp', name_ar: 'واتساب صفحة من نحن', name_en: 'About Page WhatsApp', type: 'whatsapp', location_ar: 'صفحة من نحن', location_en: 'About page', fallback: () => staticContact.whatsapp },
+  { key: 'about_phone', name_ar: 'هاتف صفحة من نحن', name_en: 'About Page Phone', type: 'phone', location_ar: 'صفحة من نحن', location_en: 'About page', fallback: () => staticContact.phone },
+  { key: 'solutions_whatsapp', name_ar: 'واتساب صفحة الحلول', name_en: 'Solutions Page WhatsApp', type: 'whatsapp', location_ar: 'صفحة الحلول', location_en: 'Solutions page', fallback: () => staticContact.whatsapp },
+  { key: 'solutions_phone', name_ar: 'هاتف صفحة الحلول', name_en: 'Solutions Page Phone', type: 'phone', location_ar: 'صفحة الحلول', location_en: 'Solutions page', fallback: () => staticContact.phone },
 ];
 
 async function seedContacts() {
