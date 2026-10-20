@@ -108,6 +108,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Too many events' }, { status: 429 });
     }
 
+    const ua = req.headers.get('user-agent') ?? '';
+    const deviceType = /ipad|tablet|playbook|silk/i.test(ua) ? 'tablet'
+      : /mobi|android|iphone|ipod|windows phone|blackberry|opera mini/i.test(ua) ? 'mobile'
+      : /windows|macintosh|linux|x11/i.test(ua) ? 'desktop' : 'unknown';
+
     await recordContactEvent({
       type,
       contact,
@@ -115,6 +120,7 @@ export async function POST(req: NextRequest) {
       pageUrl,
       pageTitle: pageTitle ?? undefined,
       sessionId: sessionId ?? undefined,
+      deviceType,
       productSlug: productSlug ?? undefined,
     });
 

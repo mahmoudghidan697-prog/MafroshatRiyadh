@@ -126,6 +126,11 @@ async function migrateContactEventsKey() {
     if (!has) {
       await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN contact_key TEXT', args: [] });
     }
+    // Device type column (for per-icon analytics) — safe migration
+    const info2 = await db.execute({ sql: 'PRAGMA table_info(contact_events)', args: [] });
+    if (!info2.rows.some((r: any) => r.name === 'device_type')) {
+      await db.execute({ sql: 'ALTER TABLE contact_events ADD COLUMN device_type TEXT', args: [] });
+    }
   } catch {
     // Ignore — best effort
   }
@@ -679,6 +684,7 @@ export async function recordContactEvent(e: {
   pageUrl: string;
   pageTitle?: string;
   sessionId?: string;
+  deviceType?: string;
   productSlug?: string;
 }): Promise<void> {
   await ensureSchema();
@@ -716,8 +722,8 @@ export async function recordContactEvent(e: {
 
   await db.execute({
     sql: `INSERT INTO contact_events
-      (type, contact, contact_key, page_url, page_title, session_id, product_slug, merchant_id, agreement_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (type, contact, contact_key, page_url, page_title, session_id, device_type, product_slug, merchant_id, agreement_id, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       e.type,
       e.contact,
@@ -725,6 +731,7 @@ export async function recordContactEvent(e: {
       e.pageUrl,
       e.pageTitle ?? null,
       e.sessionId ?? null,
+      e.deviceType ?? null,
       productSlug,
       merchantId,
       agreementId,
@@ -1009,6 +1016,125 @@ export async function getContactByPage(range = '30d', from?: string, to?: string
     lastInteraction: r.last_interaction ? String(r.last_interaction) : null,
     topContact: topByPage[String(r.page_url)] ?? null,
   }));
+}
+
+/** Per-contact-icon analytics (single key). Returns contact info + stats + history. */
+export async function getContactAnalyticsByKey(
+  key: string,
+  range = '30d',
+  from?: string,
+  to?: string,
+  limit = 50,
+  offset = 0,
+) {
+  await ensureSchema();
+  const db = getDb();
+  const b = rangeBounds(range, from, to);
+
+  const cfgRes = await db.execute({ sql: 'SELECT * FROM contacts WHERE key = ?', args: [key] });
+  const cfg = cfgRes.rows[0] ? rowToContact(cfgRes.rows[0]) : null;
+
+  const now = new Date();
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).toISOString();
+  const daysAgo = (n: number) => { const d = new Date(now); d.setDate(d.getDate() - n); return d; };
+  const todayStart = startOfDay(now);
+  const yesterdayStart = startOfDay(daysAgo(1));
+  const yesterdayEnd = startOfDay(now);
+  const d7Start = startOfDay(daysAgo(6));
+  const d30Start = startOfDay(daysAgo(29));
+
+  const [agg, allTimeRow, uniqueRow] = await Promise.all([
+    db.execute({
+      sql: `SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN type='whatsapp' THEN 1 ELSE 0 END) AS whatsapp,
+        SUM(CASE WHEN type='phone' THEN 1 ELSE 0 END) AS phone,
+        SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS today,
+        SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) AS yesterday,
+        SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS last7,
+        SUM(CASE WHEN created_at >= ? THEN 1 ELSE 0 END) AS last30,
+        MIN(created_at) AS first_clicked,
+        MAX(created_at) AS last_clicked
+      FROM contact_events WHERE contact_key = ? AND created_at BETWEEN ? AND ?`,
+      args: [todayStart, yesterdayStart, yesterdayEnd, d7Start, d30Start, key, b.from, b.to],
+    }),
+    db.execute({
+      sql: 'SELECT COUNT(*) AS n, MIN(created_at) AS first FROM contact_events WHERE contact_key = ?',
+      args: [key],
+    }),
+    db.execute({
+      sql: 'SELECT COUNT(DISTINCT session_id) AS n FROM contact_events WHERE contact_key = ? AND created_at BETWEEN ? AND ?',
+      args: [key, b.from, b.to],
+    }),
+  ]);
+
+  const a = agg.rows[0] as any;
+  const at = allTimeRow.rows[0] as any;
+
+  const pageRows = await db.execute({
+    sql: 'SELECT page_url, MAX(page_title) AS page_title, COUNT(*) AS n FROM contact_events WHERE contact_key = ? AND created_at BETWEEN ? AND ? GROUP BY page_url ORDER BY n DESC',
+    args: [key, b.from, b.to],
+  });
+  const pages = pageRows.rows.map((r: any) => ({
+    url: String(r.page_url),
+    title: r.page_title ? String(r.page_title) : null,
+    clicks: Number(r.n),
+  }));
+
+  const seriesRows = await db.execute({
+    sql: `SELECT substr(created_at, 1, 10) AS day, COUNT(*) AS n
+      FROM contact_events WHERE contact_key = ? AND created_at BETWEEN ? AND ?
+      GROUP BY day ORDER BY day ASC`,
+    args: [key, b.from, b.to],
+  });
+  const series = seriesRows.rows.map((r: any) => ({ date: String(r.day), clicks: Number(r.n) }));
+
+  const [histRows, countRow] = await Promise.all([
+    db.execute({
+      sql: `SELECT id, type, contact, page_url, page_title, session_id, device_type, product_slug, created_at
+        FROM contact_events WHERE contact_key = ? AND created_at BETWEEN ? AND ?
+        ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
+      args: [key, b.from, b.to, limit, offset],
+    }),
+    db.execute({
+      sql: 'SELECT COUNT(*) AS n FROM contact_events WHERE contact_key = ? AND created_at BETWEEN ? AND ?',
+      args: [key, b.from, b.to],
+    }),
+  ]);
+  const history = histRows.rows.map((r: any) => ({
+    id: Number(r.id),
+    type: String(r.type),
+    contact: String(r.contact),
+    pageUrl: String(r.page_url),
+    pageTitle: r.page_title ? String(r.page_title) : null,
+    sessionId: r.session_id ? String(r.session_id) : null,
+    deviceType: r.device_type ? String(r.device_type) : null,
+    productSlug: r.product_slug ? String(r.product_slug) : null,
+    createdAt: String(r.created_at),
+  }));
+
+  return {
+    contact: cfg,
+    key,
+    range: b,
+    stats: {
+      total: Number(a?.total ?? 0),
+      whatsapp: Number(a?.whatsapp ?? 0),
+      phone: Number(a?.phone ?? 0),
+      today: Number(a?.today ?? 0),
+      yesterday: Number(a?.yesterday ?? 0),
+      last7: Number(a?.last7 ?? 0),
+      last30: Number(a?.last30 ?? 0),
+      allTime: Number(at?.n ?? 0),
+      uniqueVisitors: Number(uniqueRow.rows[0]?.n ?? 0),
+      firstClicked: a?.first_clicked ? String(a.first_clicked) : (at?.first ? String(at.first) : null),
+      lastClicked: a?.last_clicked ? String(a.last_clicked) : null,
+    },
+    pages,
+    series,
+    history,
+    historyTotal: Number(countRow.rows[0]?.n ?? 0),
+  };
 }
 
 /** Time-series (daily) for charts: [{ date, whatsapp, phone }]. */

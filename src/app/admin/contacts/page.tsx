@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/admin/Toast';
 
@@ -18,6 +19,7 @@ interface Contact {
 export default function AdminContacts() {
   const { locale } = useApp();
   const { toast } = useToast();
+  const router = useRouter();
   const isAr = locale === 'ar';
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -198,6 +200,12 @@ export default function AdminContacts() {
                           className="btn-press h-9 px-3 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm font-medium text-charcoal dark:text-ivory hover:border-forest dark:hover:border-forest-light"
                         >
                           {isAr ? 'عرض في الموقع' : 'View on site'}
+                        </button>
+                        <button
+                          onClick={() => router.push(`/admin/contact-analytics/${encodeURIComponent(c.key)}`)}
+                          className="btn-press h-9 px-3 rounded-lg border border-charcoal/15 dark:border-charcoal-border text-sm font-medium text-forest dark:text-forest-light hover:border-forest dark:hover:border-forest-light"
+                        >
+                          {isAr ? '📊 تحليلات' : '📊 Analytics'}
                         </button>
                         <button
                           onClick={() => toggleActive(c)}
