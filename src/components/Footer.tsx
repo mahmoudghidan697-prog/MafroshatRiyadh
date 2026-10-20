@@ -12,6 +12,7 @@ export function Footer() {
   const { locale, t } = useApp();
   const { waLink, phoneLink, number: contactNumber } = useContacts();
   const { settings, refresh } = useSiteData();
+  const email = settings.email || contact.email;
   const logo = settings.logo || business.logo;
 
   const quickLinks = [
@@ -122,11 +123,11 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href={`mailto:${contact.email}`}
+                  href={`mailto:${email}`}
                   className="flex items-center gap-2.5 text-ivory/70 hover:text-ivory transition-colors"
                 >
                   <MailIcon className="w-4 h-4 shrink-0" />
-                  <span dir="ltr">{contact.email}</span>
+                  <span dir="ltr">{email}</span>
                 </a>
               </li>
               <li className="flex items-start gap-2.5 text-ivory/70">

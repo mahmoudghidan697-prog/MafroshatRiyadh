@@ -19,10 +19,12 @@ export function ContactEditBadge({
   contactKey,
   currentNumber,
   onSaved,
+  isEmail = false,
 }: {
   contactKey: string;
   currentNumber: string;
   onSaved?: () => void;
+  isEmail?: boolean;
 }) {
   const { locale } = useApp();
   const { toast } = useToast();
@@ -64,20 +66,38 @@ export function ContactEditBadge({
   if (!isAdmin) return null;
 
   async function save() {
-    const digits = value.replace(/[^\d]/g, '');
-    if (digits.length < 6) {
-      toast(isAr ? 'رقم غير صحيح' : 'Invalid number', 'error');
-      return;
+    let payloadValue = value.trim();
+    if (isEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payloadValue)) {
+        toast(isAr ? 'بريد غير صحيح' : 'Invalid email', 'error');
+        return;
+      }
+    } else {
+      const digits = value.replace(/[^\d]/g, '');
+      if (digits.length < 6) {
+        toast(isAr ? 'رقم غير صحيح' : 'Invalid number', 'error');
+        return;
+      }
+      payloadValue = digits;
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/contacts', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: contactKey, number: digits }),
-      });
+      let res: Response;
+      if (isEmail) {
+        res = await fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ settings: { email: payloadValue } }),
+        });
+      } else {
+        res = await fetch('/api/admin/contacts', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: contactKey, number: payloadValue }),
+        });
+      }
       if (res.ok) {
-        toast(isAr ? 'تم حفظ الرقم' : 'Number saved');
+        toast(isAr ? 'تم الحفظ' : 'Saved');
         setOpen(false);
         // Clear the stale sessionStorage cache so the refresh gets fresh data
         try { sessionStorage.removeItem('ms_site_data_v1'); } catch { /* ignore */ }

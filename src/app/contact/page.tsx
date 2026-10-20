@@ -23,7 +23,9 @@ type Errors = Partial<Record<'name' | 'phone' | 'email' | 'message', string>>;
 export default function ContactPage() {
   const { locale, t } = useApp();
   const { waLink, phoneLink, number: contactNumber } = useContacts();
-  const { refresh } = useSiteData();
+  const siteData = useSiteData();
+  const { refresh } = siteData;
+  const email = siteData.settings?.email || contact.email;
   const [form, setForm] = useState({ name: '', phone: '', email: '', message: '' });
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
@@ -152,7 +154,7 @@ export default function ContactPage() {
 
                   <div className="relative flex items-center">
                     <a
-                      href={`mailto:${contact.email}`}
+                      href={`mailto:${email}`}
                       data-contact-key="contact_email"
                       className="flex items-center gap-4 p-4 rounded-2xl bg-sand-100 dark:bg-charcoal-light border border-charcoal/5 dark:border-charcoal-border hover:bg-sand-200 dark:hover:bg-charcoal-elevated transition-colors"
                     >
@@ -164,12 +166,12 @@ export default function ContactPage() {
                           {t.emailUs}
                         </span>
                         <span className="block text-sm text-charcoal/60 dark:text-ivory/60" dir="ltr">
-                          {contact.email}
+                          {email}
                         </span>
                       </span>
                     </a>
                     <span className="absolute top-2 end-2">
-                      <ContactEditBadge contactKey="contact_email" currentNumber={contact.email} onSaved={refresh} />
+                      <ContactEditBadge contactKey="contact_email" currentNumber={email} onSaved={refresh} isEmail />
                     </span>
                   </div>
                 </div>
